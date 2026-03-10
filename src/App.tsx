@@ -1099,6 +1099,66 @@ export default function App() {
         </div>
       </section>
 
+      {/* Instagram Section */}
+      <section className="py-24 px-6 bg-stone-100 overflow-hidden">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+            <motion.div
+              initial={{ opacity: 0, x: -50 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              className="relative"
+            >
+              <span className="text-orange-500 font-bold tracking-widest uppercase text-sm mb-4 block">Siga-nos</span>
+              <h2 className="text-5xl md:text-6xl font-serif text-stone-900 mb-8 leading-tight">
+                Acompanhe nossas <br />
+                <span className="italic">aventuras diárias</span>
+              </h2>
+              <p className="text-xl text-stone-600 mb-10 max-w-lg">
+                Fique por dentro de novos roteiros, dicas exclusivas e as melhores paisagens do Espírito Santo em tempo real.
+              </p>
+              <a 
+                href="https://www.instagram.com/vixesturismo/" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-3 bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 text-white px-10 py-5 rounded-full font-bold hover:scale-105 transition-all shadow-2xl shadow-pink-500/20"
+              >
+                <Instagram size={24} />
+                Acessar Instagram
+              </a>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 100 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="relative flex justify-center"
+            >
+              {/* Phone Mockup */}
+              <div className="relative w-[300px] h-[600px] bg-stone-900 rounded-[3rem] border-[8px] border-stone-800 shadow-2xl overflow-hidden">
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-stone-800 rounded-b-2xl z-20" />
+                <div className="absolute inset-0 z-10">
+                  <img 
+                    src="https://i.imgur.com/72VAfVe.png" 
+                    alt="Instagram Preview" 
+                    className="w-full h-full object-cover"
+                    referrerPolicy="no-referrer"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = "https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?auto=format&fit=crop&q=80&w=1000";
+                    }}
+                  />
+                </div>
+              </div>
+              
+              {/* Decorative Elements */}
+              <div className="absolute -z-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-orange-200/50 rounded-full blur-3xl" />
+              <div className="absolute -z-10 top-1/4 right-0 w-32 h-32 bg-purple-200/50 rounded-full blur-2xl" />
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
       {/* Footer */}
       <footer className="bg-stone-50 border-t border-stone-200 pt-24 pb-12 px-6">
         <div className="max-w-7xl mx-auto">
