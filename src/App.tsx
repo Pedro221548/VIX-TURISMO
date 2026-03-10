@@ -5,6 +5,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { db } from './firebase';
+import { collection, getDocs, addDoc, query, orderBy } from 'firebase/firestore';
+import AdminPanel from './components/AdminPanel';
 import { 
   MapPin, 
   Navigation, 
@@ -32,9 +35,8 @@ import {
   ChefHat
 } from 'lucide-react';
 
-const roteiros = [
+const INITIAL_ROTEIROS = [
   {
-    id: "roteiro-1",
     title: "Praias de Guarapari",
     subtitle: "ROTEIRO 1",
     price: "450,00",
@@ -51,7 +53,6 @@ const roteiros = [
     curiosities: "As areias monazíticas de Guarapari possuem um nível natural de radioatividade que é considerado benéfico para o tratamento de reumatismo e outras inflamações."
   },
   {
-    id: "roteiro-2",
     title: "Domingos Martins e Pedra Azul",
     subtitle: "Roteiro 2",
     price: "600,00",
@@ -73,7 +74,6 @@ const roteiros = [
     curiosities: "A Pedra Azul, um afloramento de granito de 1.822 metros, possui uma formação que lembra um lagarto subindo a pedra, mudando de cor até 36 vezes por dia conforme a luz."
   },
   {
-    id: "roteiro-3",
     title: "Buda Gigante e Santa Teresa",
     subtitle: "Roteiro 3",
     price: "600,00",
@@ -92,7 +92,6 @@ const roteiros = [
     curiosities: "Santa Teresa é conhecida como a 'Terra dos Colibris' e foi o lar do naturalista Augusto Ruschi, patrono da ecologia no Brasil."
   },
   {
-    id: "roteiro-4",
     title: "Vitória e Vila Velha",
     subtitle: "Roteiro 4",
     price: "450,00",
@@ -458,7 +457,7 @@ function MoquecaModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-function RoteiroModal({ roteiro, onClose }: { roteiro: any, onClose: () => void }) {
+function RoteiroModal({ roteiro, onClose, contactInfo }: { roteiro: any, onClose: () => void, contactInfo: any }) {
   return (
     <motion.div 
       initial={{ opacity: 0 }}
@@ -544,7 +543,7 @@ function RoteiroModal({ roteiro, onClose }: { roteiro: any, onClose: () => void 
               <span className="text-3xl font-bold text-orange-600">R$ {roteiro.price}</span>
             </div>
             <a 
-              href="https://wa.me/5527998597568" 
+              href={`https://wa.me/${contactInfo.whatsapp}`} 
               target="_blank" 
               rel="noopener noreferrer"
               className="w-full md:w-auto bg-green-600 text-white px-10 py-4 rounded-2xl font-bold hover:bg-green-700 transition-all flex items-center justify-center gap-3 shadow-xl shadow-green-600/20"
@@ -631,7 +630,7 @@ const experiences = [
   }
 ];
 
-function BookingModal({ isOpen, onClose, roteiroTitle }: { isOpen: boolean, onClose: () => void, roteiroTitle: string }) {
+function BookingModal({ isOpen, onClose, roteiroTitle, contactInfo }: { isOpen: boolean, onClose: () => void, roteiroTitle: string, contactInfo: any }) {
   const [name, setName] = useState('');
   const [date, setDate] = useState('');
 
@@ -657,7 +656,7 @@ Fico no aguardo do seu retorno.
 Desde já, agradeço pela atenção.`;
 
     const encodedMessage = encodeURIComponent(message);
-    window.open(`https://wa.me/5527998597568?text=${encodedMessage}`, '_blank');
+    window.open(`https://wa.me/${contactInfo.whatsapp}?text=${encodedMessage}`, '_blank');
     onClose();
   };
 
@@ -733,6 +732,52 @@ export default function App() {
   const [selectedRoteiro, setSelectedRoteiro] = useState<any>(null);
   const [showMoquecaRecipe, setShowMoquecaRecipe] = useState(false);
   const [showSunsetGuide, setShowSunsetGuide] = useState(false);
+  const [showAdmin, setShowAdmin] = useState(false);
+  const [roteiros, setRoteiros] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [contactInfo, setContactInfo] = useState<any>({
+    phone: '5527998597568',
+    whatsapp: '5527998597568',
+    instagram: 'https://instagram.com/citytoures',
+    facebook: 'https://facebook.com/citytoures',
+    email: 'contato@citytoures.com.br'
+  });
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Fetch Roteiros
+        const q = query(collection(db, 'roteiros'), orderBy('subtitle'));
+        const querySnapshot = await getDocs(q);
+        
+        if (querySnapshot.empty) {
+          // Seed initial data
+          for (const roteiro of INITIAL_ROTEIROS) {
+            await addDoc(collection(db, 'roteiros'), roteiro);
+          }
+          // Re-fetch
+          const newSnapshot = await getDocs(q);
+          setRoteiros(newSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        } else {
+          setRoteiros(querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        }
+
+        // Fetch Settings
+        const settingsSnap = await getDocs(collection(db, 'settings'));
+        if (!settingsSnap.empty) {
+          setContactInfo(settingsSnap.docs[0].data());
+        }
+        setLoading(false);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+        // Fallback to initial data if firebase fails
+        setRoteiros(INITIAL_ROTEIROS);
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [showAdmin]); // Refresh when closing admin
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [bookingRoteiro, setBookingRoteiro] = useState<any>(null);
 
@@ -744,6 +789,14 @@ export default function App() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  if (loading) {
+    return (
+      <div className="fixed inset-0 bg-white z-[100] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#fafaf9] text-[#1c1917] font-sans selection:bg-orange-100 selection:text-orange-900">
       <AnimatePresence>
@@ -752,13 +805,14 @@ export default function App() {
             isOpen={isBookingModalOpen} 
             onClose={() => setIsBookingModalOpen(false)} 
             roteiroTitle={bookingRoteiro?.title || ''} 
+            contactInfo={contactInfo}
           />
         )}
       </AnimatePresence>
 
       {/* Floating WhatsApp Button */}
       <motion.a 
-        href="https://wa.me/5527998597568"
+        href={`https://wa.me/${contactInfo.whatsapp}`}
         target="_blank"
         rel="noopener noreferrer"
         initial={{ scale: 0, opacity: 0 }}
@@ -800,7 +854,7 @@ export default function App() {
               </a>
             ))}
             <a 
-              href="https://wa.me/5527998597568"
+              href={`https://wa.me/${contactInfo.whatsapp}`}
               target="_blank"
               rel="noopener noreferrer"
               className="bg-orange-600 text-white px-5 py-2 rounded-full text-sm font-semibold hover:bg-orange-700 transition-all shadow-lg shadow-orange-600/20"
@@ -844,7 +898,7 @@ export default function App() {
                 </a>
               ))}
               <a 
-                href="https://wa.me/5527998597568"
+                href={`https://wa.me/${contactInfo.whatsapp}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="bg-orange-600 text-white w-full py-4 rounded-2xl text-lg font-bold mt-4 text-center"
@@ -857,10 +911,14 @@ export default function App() {
       </AnimatePresence>
 
       <AnimatePresence>
+        {showAdmin && (
+          <AdminPanel onExit={() => setShowAdmin(false)} />
+        )}
         {selectedRoteiro && (
           <RoteiroModal 
             roteiro={selectedRoteiro} 
             onClose={() => setSelectedRoteiro(null)} 
+            contactInfo={contactInfo}
           />
         )}
         {showMoquecaRecipe && (
@@ -911,7 +969,7 @@ export default function App() {
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </a>
               <a 
-                href="https://wa.me/5527998597568"
+                href={`https://wa.me/${contactInfo.whatsapp}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="bg-transparent border border-white/30 backdrop-blur-sm text-white px-8 py-4 rounded-full font-bold hover:bg-white/10 transition-all"
@@ -1337,9 +1395,17 @@ export default function App() {
           </div>
 
           <div className="border-t border-stone-200 pt-12 flex flex-col md:flex-row justify-between items-center gap-6">
-            <p className="text-stone-400 text-xs">
-              © 2024 VIX ES TURISMO. Todos os direitos reservados.
-            </p>
+            <div className="flex items-center gap-6">
+              <p className="text-stone-400 text-xs">
+                © 2024 VIX ES TURISMO. Todos os direitos reservados.
+              </p>
+              <button 
+                onClick={() => setShowAdmin(true)}
+                className="text-stone-400 hover:text-orange-600 transition-colors text-[10px] font-bold uppercase tracking-widest"
+              >
+                Admin
+              </button>
+            </div>
             <div className="flex items-center gap-2 text-stone-400 text-xs">
               <MapPin className="w-3 h-3" />
               <span>Vitória, Espírito Santo - Brasil</span>
