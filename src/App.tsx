@@ -486,7 +486,7 @@ function RoteiroModal({ roteiro, onClose }: { roteiro: any, onClose: () => void 
           />
           <button 
             onClick={onClose}
-            className="absolute top-6 right-6 bg-white/20 backdrop-blur-md hover:bg-white/40 text-white p-2 rounded-full transition-colors"
+            className="absolute top-6 right-6 bg-white/20 backdrop-blur-md hover:bg-white/40 text-white p-2 rounded-full transition-colors z-10"
           >
             <X className="w-6 h-6" />
           </button>
