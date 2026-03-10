@@ -36,7 +36,7 @@ const roteiros = [
   {
     id: "roteiro-1",
     title: "Praias de Guarapari",
-    subtitle: "City Tour ES",
+    subtitle: "ROTEIRO 1",
     price: "450,00",
     images: [
       "https://prefiroguarapari.com.br/wp-content/uploads/2024/08/praia-do-morro-em-guarapari.jpg",
