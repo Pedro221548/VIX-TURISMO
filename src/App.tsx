@@ -6,7 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { db } from './firebase';
-import { collection, getDocs, addDoc, query, orderBy } from 'firebase/firestore';
+import { collection, getDocs, addDoc, query, orderBy, updateDoc } from 'firebase/firestore';
 import AdminPanel from './components/AdminPanel';
 import { 
   MapPin, 
@@ -61,14 +61,13 @@ const INITIAL_ROTEIROS = [
       "https://www.correiobraziliense.com.br/aqui/wp-content/uploads/2025/08/1280px-Pedra_Azul_006.jpg",
       "https://th.bing.com/th/id/OIP.AMFkZfcV0hMHbAbBYPdt0QHaE8?w=279&h=186&c=7&r=0&o=7&pid=1.7&rm=3",
       "https://dynamic-media-cdn.tripadvisor.com/media/photo-o/15/41/21/2d/photo2jpg.jpg?w=1200&h=-1&s=1",
-      "https://tour360.meupasseiovirtual.com/05969/44419/cachoeira-da-bica/tourvirtual/imageCapa.jpeg?v=182",
       "https://uploads.folhavitoria.com.br/2025/02/QACT0jNh-FACHADA-KEBIS-BISCOITOS-1536x864.webp",
       "https://tse3.mm.bing.net/th/id/OIP.TreHpZPYn_3Ju_naltGHKAHaE2?rs=1&pid=ImgDetMain&o=7&rm=3",
       "https://th.bing.com/th/id/OIP.txQ4_gmxCLKq6SPLDafatAAAAA?w=239&h=180&c=7&r=0&o=7&pid=1.7&rm=3",
       "https://th.bing.com/th/id/OIP.9YlEMVoGdWK-jxvuKJNewAHaFj?w=257&h=193&c=7&r=0&o=7&pid=1.7&rm=3",
       "https://media-cdn.tripadvisor.com/media/photo-s/0e/a8/1e/0e/frente-da-cervejaria.jpg"
     ],
-    places: ["Parque da Pedra Azul", "Quadrado de São Paulinho", "Cervejaria Ronchi", "Cachoeira da Bica", "Biscoite Kebis", "Igreja Luterana", "Museu do Colono", "Rua do Laser", "Cervejaria Barba Ruiva", "Portal da Cidade"],
+    places: ["Parque da Pedra Azul", "Quadrado de São Paulinho", "Cervejaria Ronchi", "Biscoite Kebis", "Igreja Luterana", "Museu do Colono", "Rua do Laser", "Cervejaria Barba Ruiva", "Portal da Cidade"],
     history: "Colonizada por alemães e italianos, a região mantém viva a cultura europeia. Domingos Martins é um pedaço da Alemanha nas montanhas capixabas, com arquitetura enxaimel e festas tradicionais.",
     gastronomy: "Destaque para o Socol (embutido de origem italiana), queijos finos, cafés especiais premiados e a culinária típica alemã como o joelho de porco.",
     curiosities: "A Pedra Azul, um afloramento de granito de 1.822 metros, possui uma formação que lembra um lagarto subindo a pedra, mudando de cor até 36 vezes por dia conforme a luz."
@@ -759,7 +758,18 @@ export default function App() {
           const newSnapshot = await getDocs(q);
           setRoteiros(newSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
         } else {
-          setRoteiros(querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+          const roteirosData = querySnapshot.docs.map(doc => {
+            const data = doc.data();
+            // One-time cleanup for Cachoeira da Bica
+            if (data.places?.includes("Cachoeira da Bica") || data.images?.some((img: string) => img.includes("cachoeira-da-bica"))) {
+              const updatedPlaces = data.places?.filter((p: string) => p !== "Cachoeira da Bica");
+              const updatedImages = data.images?.filter((img: string) => !img.includes("cachoeira-da-bica"));
+              updateDoc(doc.ref, { places: updatedPlaces, images: updatedImages });
+              return { id: doc.id, ...data, places: updatedPlaces, images: updatedImages };
+            }
+            return { id: doc.id, ...data };
+          });
+          setRoteiros(roteirosData);
         }
 
         // Fetch Settings
