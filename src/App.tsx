@@ -921,6 +921,130 @@ export default function App() {
         </div>
       </section>
 
+      {/* Instagram Section */}
+      <section className="py-24 px-6 bg-stone-100 overflow-hidden">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+            <motion.div
+              initial={{ opacity: 0, x: -50 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              className="relative"
+            >
+              <span className="text-orange-500 font-bold tracking-widest uppercase text-sm mb-4 block">Siga-nos</span>
+              <h2 className="text-5xl md:text-6xl font-serif text-stone-900 mb-8 leading-tight">
+                Acompanhe nossas <br />
+                <span className="italic">aventuras diárias</span>
+              </h2>
+              <p className="text-xl text-stone-600 mb-10 max-w-lg">
+                Fique por dentro de novos roteiros, dicas exclusivas e as melhores paisagens do Espírito Santo em tempo real.
+              </p>
+              <a 
+                href="https://www.instagram.com/vixesturismo/" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-3 bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 text-white px-10 py-5 rounded-full font-bold hover:scale-105 transition-all shadow-2xl shadow-pink-500/20"
+              >
+                <Instagram size={24} />
+                Acessar Instagram
+              </a>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 100 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="relative flex justify-center"
+            >
+              {/* Phone Mockup */}
+              <div className="relative w-[300px] h-[600px] bg-stone-900 rounded-[3rem] border-[8px] border-stone-800 shadow-2xl overflow-hidden">
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-stone-800 rounded-b-2xl z-20" />
+                <div className="absolute inset-0 z-10">
+                  <img 
+                    src="https://i.imgur.com/72VAfVe.png" 
+                    alt="Instagram Preview" 
+                    className="w-full h-full object-cover"
+                    referrerPolicy="no-referrer"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = "https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?auto=format&fit=crop&q=80&w=1000";
+                    }}
+                  />
+                </div>
+              </div>
+              
+              {/* Decorative Elements */}
+              <div className="absolute -z-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-orange-200/50 rounded-full blur-3xl" />
+              <div className="absolute -z-10 top-1/4 right-0 w-32 h-32 bg-purple-200/50 rounded-full blur-2xl" />
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
+      {/* Gastronomy Highlight */}
+      <section id="gastronomia" className="py-24 px-6 max-w-7xl mx-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+          <motion.div
+            initial={{ opacity: 0, x: -30 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            className="relative"
+          >
+            <div className="aspect-square rounded-[3rem] overflow-hidden shadow-2xl">
+              <img 
+                src="https://images.unsplash.com/photo-1551024709-8f23befc6f87?auto=format&fit=crop&q=80&w=1000" 
+                alt="Moqueca Capixaba" 
+                className="w-full h-full object-cover"
+                referrerPolicy="no-referrer"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = "https://picsum.photos/seed/moqueca/1000/1000";
+                }}
+              />
+            </div>
+            <div className="absolute -bottom-8 -right-8 bg-white p-8 rounded-3xl shadow-xl max-w-[240px] hidden md:block">
+              <div className="flex gap-1 mb-2">
+                {[1,2,3,4,5].map(i => <Sun key={i} className="w-4 h-4 fill-orange-500 text-orange-500" />)}
+              </div>
+              <p className="text-stone-900 font-bold italic text-lg leading-tight mb-2">
+                "A melhor moqueca que já provei na vida!"
+              </p>
+              <p className="text-stone-400 text-xs font-medium uppercase tracking-wider">— Crítico Gastronômico</p>
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, x: 30 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+          >
+            <span className="text-orange-600 font-bold text-xs uppercase tracking-[0.3em] mb-4 block">Sabor Autêntico</span>
+            <h2 className="text-4xl md:text-5xl font-bold text-stone-900 mb-8 tracking-tight leading-tight">
+              Uma viagem pelo paladar <br /> das montanhas ao mar.
+            </h2>
+            <p className="text-stone-600 text-lg leading-relaxed mb-10">
+              A culinária capixaba é uma mistura rica de influências indígenas, africanas e europeias. Nossa moqueca, preparada em tradicionais panelas de barro de Goiabeiras, é um patrimônio cultural que você não pode deixar de experimentar.
+            </p>
+            <div className="grid grid-cols-2 gap-8 mb-10">
+              <div>
+                <h4 className="font-bold text-stone-900 mb-2">Panelas de Barro</h4>
+                <p className="text-sm text-stone-500">Artesanato secular reconhecido pelo IPHAN.</p>
+              </div>
+              <div>
+                <h4 className="font-bold text-stone-900 mb-2">Frutos do Mar</h4>
+                <p className="text-sm text-stone-500">Ingredientes frescos pescados diariamente.</p>
+              </div>
+            </div>
+            <button 
+              onClick={() => setShowMoquecaRecipe(true)}
+              className="bg-stone-900 text-white px-10 py-4 rounded-full font-bold hover:bg-stone-800 transition-all shadow-xl shadow-stone-900/20"
+            >
+              Guia Gastronômico
+            </button>
+          </motion.div>
+        </div>
+      </section>
+
       {/* Fleet Section */}
       <section className="py-24 px-6 bg-white">
         <div className="max-w-7xl mx-auto">
@@ -1031,130 +1155,6 @@ export default function App() {
                 </button>
               </motion.div>
             ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Gastronomy Highlight */}
-      <section id="gastronomia" className="py-24 px-6 max-w-7xl mx-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-          <motion.div
-            initial={{ opacity: 0, x: -30 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            className="relative"
-          >
-            <div className="aspect-square rounded-[3rem] overflow-hidden shadow-2xl">
-              <img 
-                src="https://images.unsplash.com/photo-1551024709-8f23befc6f87?auto=format&fit=crop&q=80&w=1000" 
-                alt="Moqueca Capixaba" 
-                className="w-full h-full object-cover"
-                referrerPolicy="no-referrer"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.src = "https://picsum.photos/seed/moqueca/1000/1000";
-                }}
-              />
-            </div>
-            <div className="absolute -bottom-8 -right-8 bg-white p-8 rounded-3xl shadow-xl max-w-[240px] hidden md:block">
-              <div className="flex gap-1 mb-2">
-                {[1,2,3,4,5].map(i => <Sun key={i} className="w-4 h-4 fill-orange-500 text-orange-500" />)}
-              </div>
-              <p className="text-stone-900 font-bold italic text-lg leading-tight mb-2">
-                "A melhor moqueca que já provei na vida!"
-              </p>
-              <p className="text-stone-400 text-xs font-medium uppercase tracking-wider">— Crítico Gastronômico</p>
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, x: 30 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-          >
-            <span className="text-orange-600 font-bold text-xs uppercase tracking-[0.3em] mb-4 block">Sabor Autêntico</span>
-            <h2 className="text-4xl md:text-5xl font-bold text-stone-900 mb-8 tracking-tight leading-tight">
-              Uma viagem pelo paladar <br /> das montanhas ao mar.
-            </h2>
-            <p className="text-stone-600 text-lg leading-relaxed mb-10">
-              A culinária capixaba é uma mistura rica de influências indígenas, africanas e europeias. Nossa moqueca, preparada em tradicionais panelas de barro de Goiabeiras, é um patrimônio cultural que você não pode deixar de experimentar.
-            </p>
-            <div className="grid grid-cols-2 gap-8 mb-10">
-              <div>
-                <h4 className="font-bold text-stone-900 mb-2">Panelas de Barro</h4>
-                <p className="text-sm text-stone-500">Artesanato secular reconhecido pelo IPHAN.</p>
-              </div>
-              <div>
-                <h4 className="font-bold text-stone-900 mb-2">Frutos do Mar</h4>
-                <p className="text-sm text-stone-500">Ingredientes frescos pescados diariamente.</p>
-              </div>
-            </div>
-            <button 
-              onClick={() => setShowMoquecaRecipe(true)}
-              className="bg-stone-900 text-white px-10 py-4 rounded-full font-bold hover:bg-stone-800 transition-all shadow-xl shadow-stone-900/20"
-            >
-              Guia Gastronômico
-            </button>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Instagram Section */}
-      <section className="py-24 px-6 bg-stone-100 overflow-hidden">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-            <motion.div
-              initial={{ opacity: 0, x: -50 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              className="relative"
-            >
-              <span className="text-orange-500 font-bold tracking-widest uppercase text-sm mb-4 block">Siga-nos</span>
-              <h2 className="text-5xl md:text-6xl font-serif text-stone-900 mb-8 leading-tight">
-                Acompanhe nossas <br />
-                <span className="italic">aventuras diárias</span>
-              </h2>
-              <p className="text-xl text-stone-600 mb-10 max-w-lg">
-                Fique por dentro de novos roteiros, dicas exclusivas e as melhores paisagens do Espírito Santo em tempo real.
-              </p>
-              <a 
-                href="https://www.instagram.com/vixesturismo/" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-3 bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 text-white px-10 py-5 rounded-full font-bold hover:scale-105 transition-all shadow-2xl shadow-pink-500/20"
-              >
-                <Instagram size={24} />
-                Acessar Instagram
-              </a>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 100 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="relative flex justify-center"
-            >
-              {/* Phone Mockup */}
-              <div className="relative w-[300px] h-[600px] bg-stone-900 rounded-[3rem] border-[8px] border-stone-800 shadow-2xl overflow-hidden">
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-stone-800 rounded-b-2xl z-20" />
-                <div className="absolute inset-0 z-10">
-                  <img 
-                    src="https://i.imgur.com/72VAfVe.png" 
-                    alt="Instagram Preview" 
-                    className="w-full h-full object-cover"
-                    referrerPolicy="no-referrer"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.src = "https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?auto=format&fit=crop&q=80&w=1000";
-                    }}
-                  />
-                </div>
-              </div>
-              
-              {/* Decorative Elements */}
-              <div className="absolute -z-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-orange-200/50 rounded-full blur-3xl" />
-              <div className="absolute -z-10 top-1/4 right-0 w-32 h-32 bg-purple-200/50 rounded-full blur-2xl" />
-            </motion.div>
           </div>
         </div>
       </section>
