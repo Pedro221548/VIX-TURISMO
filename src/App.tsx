@@ -34,7 +34,8 @@ import {
   Clock,
   Users,
   Flame,
-  ChefHat
+  ChefHat,
+  Download
 } from 'lucide-react';
 
 const INITIAL_ROTEIROS = [
@@ -519,7 +520,7 @@ function FadeInImage({ src, alt, className, loading = "lazy" }: { src: string, a
   );
 }
 
-function RoteiroModal({ roteiro, onClose, contactInfo }: { roteiro: any, onClose: () => void, contactInfo: any }) {
+function RoteiroModal({ roteiro, onClose, contactInfo, onDownload }: { roteiro: any, onClose: () => void, contactInfo: any, onDownload: (url: string, filename: string) => void }) {
   return (
     <motion.div 
       initial={{ opacity: 0 }}
@@ -625,9 +626,18 @@ function RoteiroModal({ roteiro, onClose, contactInfo }: { roteiro: any, onClose
 
           {roteiro.flyer && (
             <div className="mb-12">
-              <h4 className="font-bold text-stone-900 mb-6 flex items-center gap-2">
-                <ImageIcon className="w-5 h-5 text-orange-600" /> Flyer do Roteiro
-              </h4>
+              <div className="flex items-center justify-between mb-6">
+                <h4 className="font-bold text-stone-900 flex items-center gap-2">
+                  <ImageIcon className="w-5 h-5 text-orange-600" /> Flyer do Roteiro
+                </h4>
+                <button 
+                  onClick={() => onDownload(roteiro.flyer, `flyer-${roteiro.title.toLowerCase().replace(/\s+/g, '-')}.jpg`)}
+                  className="flex items-center gap-2 px-4 py-2 bg-stone-900 text-white rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-orange-600 transition-all shadow-lg shadow-black/10"
+                >
+                  <Download className="w-4 h-4" />
+                  Baixar Flyer
+                </button>
+              </div>
               <div className="rounded-3xl overflow-hidden border border-stone-200 shadow-lg">
                 <FadeInImage src={roteiro.flyer} alt="Flyer" className="w-full h-auto" />
               </div>
@@ -859,6 +869,24 @@ export default function App() {
     email: 'contato@citytoures.com.br'
   });
 
+  const handleDownload = async (url: string, filename: string) => {
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      console.error("Error downloading image:", error);
+      window.open(url, '_blank');
+    }
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -1042,6 +1070,7 @@ export default function App() {
             roteiro={selectedRoteiro} 
             onClose={() => setSelectedRoteiro(null)} 
             contactInfo={contactInfo}
+            onDownload={handleDownload}
           />
         )}
         {showMoquecaRecipe && (
@@ -1307,6 +1336,16 @@ export default function App() {
                           className="w-full h-full transition-transform duration-700 group-hover:scale-110"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-6">
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDownload(post.image, `post-${post.id}.jpg`);
+                            }}
+                            className="absolute top-4 right-4 bg-white/20 hover:bg-white/40 text-white p-2 rounded-xl backdrop-blur-md transition-all flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest"
+                          >
+                            <Download className="w-4 h-4" />
+                            Baixar
+                          </button>
                           <p className="text-white text-xs font-medium leading-relaxed italic">
                             "{post.comment}"
                           </p>
