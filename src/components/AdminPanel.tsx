@@ -40,6 +40,8 @@ interface Roteiro {
   title: string;
   subtitle: string;
   price: string;
+  priceCash?: string;
+  priceInstallment?: string;
   time?: string;
   images: string[];
   places: string[];
@@ -88,12 +90,22 @@ export default function AdminPanel({ onExit }: { onExit: () => void }) {
     setLoading(true);
     try {
       // Fetch Roteiros
-      const q = query(collection(db, 'roteiros'), orderBy('title'));
+      const q = query(collection(db, 'roteiros'));
       const querySnapshot = await getDocs(q);
       const roteirosData = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       })) as Roteiro[];
+
+      // Sort numerically by subtitle (e.g., "Roteiro 1", "Roteiro 2")
+      roteirosData.sort((a, b) => {
+        const getNum = (s: string) => {
+          const match = s.match(/\d+/);
+          return match ? parseInt(match[0]) : 0;
+        };
+        return getNum(a.subtitle) - getNum(b.subtitle);
+      });
+
       setRoteiros(roteirosData);
 
       // Fetch Contact Info
@@ -316,9 +328,26 @@ export default function AdminPanel({ onExit }: { onExit: () => void }) {
                   <span className="text-[10px] font-bold text-orange-600 uppercase tracking-widest mb-1 block">{roteiro.subtitle}</span>
                   <h3 className="font-bold text-stone-900 mb-2">{roteiro.title}</h3>
                   <p className="text-sm text-stone-500 line-clamp-2 mb-4">{roteiro.history}</p>
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-stone-900">R$ {roteiro.price}</span>
-                    <span className="text-xs text-stone-400">{roteiro.places.length} locais</span>
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-stone-400">Geral:</span>
+                      <span className="font-bold text-stone-900">R$ {roteiro.price}</span>
+                    </div>
+                    {roteiro.priceCash && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-stone-400">À Vista:</span>
+                        <span className="font-bold text-green-600 text-sm">R$ {roteiro.priceCash}</span>
+                      </div>
+                    )}
+                    {roteiro.priceInstallment && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-stone-400">Parcelado:</span>
+                        <span className="font-bold text-orange-600 text-sm">R$ {roteiro.priceInstallment}</span>
+                      </div>
+                    )}
+                    <div className="flex items-center justify-end mt-2">
+                      <span className="text-[10px] text-stone-400 uppercase font-bold">{roteiro.places.length} locais</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -427,12 +456,13 @@ export default function AdminPanel({ onExit }: { onExit: () => void }) {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <label className="text-xs font-bold text-stone-400 uppercase tracking-widest">Preço (R$)</label>
+                      <label className="text-xs font-bold text-stone-400 uppercase tracking-widest">Preço Geral (R$)</label>
                       <input 
                         type="text" 
                         value={editingRoteiro.price}
                         onChange={e => setEditingRoteiro({...editingRoteiro, price: e.target.value})}
                         className="w-full p-4 bg-stone-50 border border-stone-200 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none"
+                        placeholder="Ex: 450,00"
                       />
                     </div>
                     <div className="space-y-2">
@@ -443,6 +473,28 @@ export default function AdminPanel({ onExit }: { onExit: () => void }) {
                         onChange={e => setEditingRoteiro({...editingRoteiro, time: e.target.value})}
                         className="w-full p-4 bg-stone-50 border border-stone-200 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none"
                         placeholder="08:00 às 16:00"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-stone-400 uppercase tracking-widest">Valor à Vista (R$)</label>
+                      <input 
+                        type="text" 
+                        value={editingRoteiro.priceCash || ''}
+                        onChange={e => setEditingRoteiro({...editingRoteiro, priceCash: e.target.value})}
+                        className="w-full p-4 bg-stone-50 border border-stone-200 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none"
+                        placeholder="Ex: 400,00"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-stone-400 uppercase tracking-widest">Valor Parcelado (R$)</label>
+                      <input 
+                        type="text" 
+                        value={editingRoteiro.priceInstallment || ''}
+                        onChange={e => setEditingRoteiro({...editingRoteiro, priceInstallment: e.target.value})}
+                        className="w-full p-4 bg-stone-50 border border-stone-200 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none"
+                        placeholder="Ex: 12x de 45,00"
                       />
                     </div>
                   </div>

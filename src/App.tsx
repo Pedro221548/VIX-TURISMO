@@ -40,6 +40,7 @@ const INITIAL_ROTEIROS = [
     title: "Praias de Guarapari",
     subtitle: "ROTEIRO 1",
     price: "450,00",
+    time: "08:00 às 16:00",
     images: [
       "https://prefiroguarapari.com.br/wp-content/uploads/2024/08/praia-do-morro-em-guarapari.jpg",
       "https://terracapixaba.com/wp-content/uploads/2023/12/praia-de-peracanga-enseada-azul-guarapari-1-1.webp",
@@ -95,6 +96,7 @@ const INITIAL_ROTEIROS = [
     title: "Vitória e Vila Velha",
     subtitle: "Roteiro 4",
     price: "450,00",
+    time: "08:00 às 16:00",
     images: [
       "https://dynamic-media-cdn.tripadvisor.com/media/photo-o/12/c8/71/f4/photo0jpg.jpg?w=1000&h=-1&s=1",
       "https://clickmuseus.com.br/wp-content/uploads/2021/11/Moldando-a-panela-de-barro-1170x878-2.jpg",
@@ -113,6 +115,7 @@ const INITIAL_ROTEIROS = [
     title: "Anchieta e Meaípe",
     subtitle: "Roteiro 5",
     price: "550,00",
+    time: "08:00 às 16:00",
     images: [
       "https://terracapixaba.com.br/wp-content/uploads/2023/12/santuario-nacional-de-sao-jose-de-anchieta-anchieta-es-1.webp",
       "https://th.bing.com/th/id/OIP.X4K_X4K_X4K_X4K_X4K_X4K_X4K?w=800&h=600&c=7&r=0&o=7&pid=1.7",
@@ -127,6 +130,7 @@ const INITIAL_ROTEIROS = [
     title: "Venda Nova do Imigrante",
     subtitle: "Roteiro 6",
     price: "650,00",
+    time: "08:00 às 16:00",
     images: [
       "https://th.bing.com/th/id/OIP.TreHpZPYn_3Ju_naltGHKAHaE2?rs=1&pid=ImgDetMain&o=7&rm=3",
       "https://uploads.folhavitoria.com.br/2025/02/QACT0jNh-FACHADA-KEBIS-BISCOITOS-1536x864.webp",
@@ -542,6 +546,12 @@ function RoteiroModal({ roteiro, onClose, contactInfo }: { roteiro: any, onClose
               {roteiro.subtitle}
             </span>
             <h2 className="text-3xl md:text-4xl font-bold text-stone-900">{roteiro.title}</h2>
+            {roteiro.time && (
+              <div className="flex items-center gap-2 mt-2 text-stone-500">
+                <Clock className="w-4 h-4 text-orange-600" />
+                <span className="text-xs md:text-sm font-bold uppercase tracking-wider">{roteiro.time}</span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -585,9 +595,27 @@ function RoteiroModal({ roteiro, onClose, contactInfo }: { roteiro: any, onClose
           </div>
 
           <div className="flex flex-col md:flex-row items-center justify-between gap-6 pt-8 border-t border-stone-100">
-            <div>
-              <span className="text-xs text-stone-400 block uppercase font-bold tracking-widest mb-1">Investimento</span>
-              <span className="text-3xl font-bold text-orange-600">R$ {roteiro.price}</span>
+            <div className="flex flex-col gap-2">
+              <div>
+                <span className="text-xs text-stone-400 block uppercase font-bold tracking-widest mb-1">Investimento Geral</span>
+                <span className="text-3xl font-bold text-orange-600">R$ {roteiro.price}</span>
+              </div>
+              {(roteiro.priceCash || roteiro.priceInstallment) && (
+                <div className="flex gap-4 bg-stone-50 p-3 rounded-xl border border-stone-100">
+                  {roteiro.priceCash && (
+                    <div>
+                      <span className="text-[9px] font-bold text-stone-400 uppercase block">À Vista</span>
+                      <span className="text-sm font-black text-green-600">R$ {roteiro.priceCash}</span>
+                    </div>
+                  )}
+                  {roteiro.priceInstallment && (
+                    <div>
+                      <span className="text-[9px] font-bold text-stone-400 uppercase block">Parcelado</span>
+                      <span className="text-sm font-black text-orange-600">R$ {roteiro.priceInstallment}</span>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             <a 
               href={`https://wa.me/${contactInfo.whatsapp}`} 
@@ -810,11 +838,13 @@ export default function App() {
           }
         }
 
-        // Sort by subtitle (handling missing subtitles)
+        // Sort by subtitle numerically (e.g., "Roteiro 1", "Roteiro 2")
         roteirosData.sort((a, b) => {
-          const subA = (a.subtitle || '').toUpperCase();
-          const subB = (b.subtitle || '').toUpperCase();
-          return subA.localeCompare(subB);
+          const getNum = (s: string) => {
+            const match = (s || '').match(/\d+/);
+            return match ? parseInt(match[0]) : 0;
+          };
+          return getNum(a.subtitle) - getNum(b.subtitle);
         });
 
         // One-time updates/cleanups
@@ -1121,6 +1151,12 @@ export default function App() {
                   <div className="mt-8 md:mt-4">
                     <div className="mb-6">
                       <h3 className="text-2xl md:text-3xl font-bold text-[#1c1917] leading-tight whitespace-nowrap overflow-hidden text-ellipsis">{roteiro.title}</h3>
+                      {roteiro.time && (
+                        <div className="flex items-center gap-2 mt-2 text-stone-500">
+                          <Clock className="w-4 h-4 text-orange-600" />
+                          <span className="text-xs md:text-sm font-bold uppercase tracking-wider">{roteiro.time}</span>
+                        </div>
+                      )}
                     </div>
                     
                     <div className="mb-8">
@@ -1146,12 +1182,31 @@ export default function App() {
                     </button>
                   </div>
 
-                  <div className="mb-6 flex items-center justify-between border-t border-stone-100 pt-6">
-                    <span className="text-[10px] md:text-[11px] font-black text-stone-400 uppercase tracking-widest">Valor do Investimento</span>
-                    <div className="flex items-baseline gap-1 whitespace-nowrap">
-                      <span className="text-sm md:text-base font-black text-[#ff4500]">R$</span>
-                      <span className="text-2xl md:text-3xl font-black text-[#ff4500]">{roteiro.price}</span>
+                  <div className="mb-6 flex flex-col border-t border-stone-100 pt-6 gap-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] md:text-[11px] font-black text-stone-400 uppercase tracking-widest">Valor do Investimento</span>
+                      <div className="flex items-baseline gap-1 whitespace-nowrap">
+                        <span className="text-sm md:text-base font-black text-[#ff4500]">R$</span>
+                        <span className="text-2xl md:text-3xl font-black text-[#ff4500]">{roteiro.price}</span>
+                      </div>
                     </div>
+                    
+                    {(roteiro.priceCash || roteiro.priceInstallment) && (
+                      <div className="flex flex-col gap-1 bg-stone-50 p-3 rounded-xl border border-stone-100">
+                        {roteiro.priceCash && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-[9px] font-bold text-stone-500 uppercase tracking-widest">À Vista:</span>
+                            <span className="text-sm font-black text-green-600">R$ {roteiro.priceCash}</span>
+                          </div>
+                        )}
+                        {roteiro.priceInstallment && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-[9px] font-bold text-stone-500 uppercase tracking-widest">Parcelado:</span>
+                            <span className="text-sm font-black text-orange-600">R$ {roteiro.priceInstallment}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   <button 
