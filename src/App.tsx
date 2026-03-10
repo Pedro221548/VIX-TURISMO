@@ -6,7 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { db } from './firebase';
-import { collection, getDocs, addDoc, query, orderBy, updateDoc } from 'firebase/firestore';
+import { collection, getDocs, addDoc, query, orderBy, updateDoc, doc } from 'firebase/firestore';
 import AdminPanel from './components/AdminPanel';
 import { 
   MapPin, 
@@ -108,6 +108,34 @@ const INITIAL_ROTEIROS = [
     history: "Vila Velha é a cidade mais antiga do estado, fundada em 1535. O Convento da Penha, erguido em 1558, é um dos santuários marianos mais antigos e importantes do Brasil.",
     gastronomy: "A Torta Capixaba é a estrela, especialmente na Semana Santa. Em Vila Velha, a visita à fábrica de chocolates Garoto é uma experiência doce imperdível.",
     curiosities: "As Paneleiras de Goiabeiras mantêm uma tradição de mais de 400 anos na fabricação de panelas de barro, técnica essencial para a verdadeira Moqueca Capixaba."
+  },
+  {
+    title: "Anchieta e Meaípe",
+    subtitle: "Roteiro 5",
+    price: "550,00",
+    images: [
+      "https://terracapixaba.com.br/wp-content/uploads/2023/12/santuario-nacional-de-sao-jose-de-anchieta-anchieta-es-1.webp",
+      "https://th.bing.com/th/id/OIP.X4K_X4K_X4K_X4K_X4K_X4K_X4K?w=800&h=600&c=7&r=0&o=7&pid=1.7",
+      "https://media-cdn.tripadvisor.com/media/photo-s/0e/a8/1e/0e/frente-da-cervejaria.jpg"
+    ],
+    places: ["Santuário de Anchieta", "Praia de Castelhanos", "Meaípe", "Enseada Azul"],
+    history: "Anchieta abriga o Santuário Nacional de São José de Anchieta, onde o santo viveu seus últimos anos. Meaípe é uma antiga vila de pescadores que se tornou um dos balneários mais famosos do estado.",
+    gastronomy: "Meaípe é famosa por sua gastronomia, sendo considerada uma das melhores do Brasil, com destaque para a moqueca e o bolinho de aipim.",
+    curiosities: "O Santuário de Anchieta é um dos complexos jesuíticos mais antigos do Brasil, datando do século XVI."
+  },
+  {
+    title: "Venda Nova do Imigrante",
+    subtitle: "Roteiro 6",
+    price: "650,00",
+    images: [
+      "https://th.bing.com/th/id/OIP.TreHpZPYn_3Ju_naltGHKAHaE2?rs=1&pid=ImgDetMain&o=7&rm=3",
+      "https://uploads.folhavitoria.com.br/2025/02/QACT0jNh-FACHADA-KEBIS-BISCOITOS-1536x864.webp",
+      "https://th.bing.com/th/id/OIP.txQ4_gmxCLKq6SPLDafatAAAAA?w=239&h=180&c=7&r=0&o=7&pid=1.7&rm=3"
+    ],
+    places: ["Fazenda Carnielli", "Biscoitos Kebis", "Cervejaria Altezza", "Centro de Eventos Padre Cleto Caliman"],
+    history: "Venda Nova do Imigrante é a capital nacional do agroturismo. Colonizada por italianos, a cidade mantém tradições como a Festa da Polenta, que atrai milhares de visitantes anualmente.",
+    gastronomy: "Famosa pelo Socol, queijos artesanais, cafés especiais e o tradicional antepasto italiano. O agroturismo permite visitar as fazendas e comprar produtos diretamente dos produtores.",
+    curiosities: "A cidade é pioneira no agroturismo no Brasil, transformando a rotina das fazendas em uma experiência turística única."
   }
 ];
 
@@ -765,44 +793,57 @@ export default function App() {
     const fetchData = async () => {
       try {
         // Fetch Roteiros
-        const q = query(collection(db, 'roteiros'), orderBy('subtitle'));
+        const q = query(collection(db, 'roteiros'));
         const querySnapshot = await getDocs(q);
         
-        if (querySnapshot.empty) {
-          // Seed initial data
-          for (const roteiro of INITIAL_ROTEIROS) {
-            await addDoc(collection(db, 'roteiros'), roteiro);
+        let roteirosData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
+
+        // Check for missing initial roteiros
+        const existingTitles = new Set(roteirosData.map(r => r.title));
+        let addedAny = false;
+
+        for (const initial of INITIAL_ROTEIROS) {
+          if (!existingTitles.has(initial.title)) {
+            const docRef = await addDoc(collection(db, 'roteiros'), initial);
+            roteirosData.push({ id: docRef.id, ...initial });
+            addedAny = true;
           }
-          // Re-fetch
-          const newSnapshot = await getDocs(q);
-          setRoteiros(newSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-        } else {
-          const roteirosData = querySnapshot.docs.map(doc => {
-            const data = doc.data();
-            let updatedData = { ...data };
-            let hasChanges = false;
-
-            // One-time cleanup for Cachoeira da Bica
-            if (data.places?.includes("Cachoeira da Bica") || data.images?.some((img: string) => img.includes("cachoeira-da-bica"))) {
-              updatedData.places = data.places?.filter((p: string) => p !== "Cachoeira da Bica");
-              updatedData.images = data.images?.filter((img: string) => !img.includes("cachoeira-da-bica"));
-              hasChanges = true;
-            }
-
-            // One-time update for Portal da Cidade image
-            if (data.title === "Domingos Martins e Pedra Azul" && !data.images?.includes("https://i.imgur.com/JzgCJM6.jpeg")) {
-              updatedData.images = [...(updatedData.images || []), "https://i.imgur.com/JzgCJM6.jpeg"];
-              hasChanges = true;
-            }
-
-            if (hasChanges) {
-              updateDoc(doc.ref, updatedData);
-              return { id: doc.id, ...updatedData };
-            }
-            return { id: doc.id, ...data };
-          });
-          setRoteiros(roteirosData);
         }
+
+        // Sort by subtitle (handling missing subtitles)
+        roteirosData.sort((a, b) => {
+          const subA = (a.subtitle || '').toUpperCase();
+          const subB = (b.subtitle || '').toUpperCase();
+          return subA.localeCompare(subB);
+        });
+
+        // One-time updates/cleanups
+        const finalRoteiros = roteirosData.map(data => {
+          let updatedData = { ...data };
+          let hasChanges = false;
+
+          // One-time cleanup for Cachoeira da Bica
+          if (data.places?.includes("Cachoeira da Bica") || data.images?.some((img: string) => img.includes("cachoeira-da-bica"))) {
+            updatedData.places = data.places?.filter((p: string) => p !== "Cachoeira da Bica");
+            updatedData.images = data.images?.filter((img: string) => !img.includes("cachoeira-da-bica"));
+            hasChanges = true;
+          }
+
+          // One-time update for Portal da Cidade image
+          if (data.title === "Domingos Martins e Pedra Azul" && !data.images?.includes("https://i.imgur.com/JzgCJM6.jpeg")) {
+            updatedData.images = [...(updatedData.images || []), "https://i.imgur.com/JzgCJM6.jpeg"];
+            hasChanges = true;
+          }
+
+          if (hasChanges && data.id) {
+            const { id, ...updatePayload } = updatedData;
+            updateDoc(doc(db, 'roteiros', id), updatePayload);
+            return updatedData;
+          }
+          return data;
+        });
+
+        setRoteiros(finalRoteiros);
 
         // Fetch Settings
         const settingsSnap = await getDocs(collection(db, 'settings'));
