@@ -10,6 +10,7 @@ import { collection, getDocs, addDoc, query, orderBy, updateDoc, doc } from 'fir
 import AdminPanel from './components/AdminPanel';
 import { 
   MapPin, 
+  Map,
   Navigation, 
   Camera, 
   Image as ImageIcon,
@@ -1143,25 +1144,35 @@ export default function App() {
                 : 'Confira fotos reais de nossos últimos passeios e sinta a energia de cada destino.'}
             </p>
 
-            {/* View Toggle Button */}
-            <button 
-              onClick={() => setViewMode(viewMode === 'roteiros' ? 'quickPosts' : 'roteiros')}
-              className="absolute right-0 top-1/2 -translate-y-1/2 bg-white p-4 rounded-full shadow-xl border border-stone-100 text-orange-600 hover:bg-orange-600 hover:text-white transition-all group hidden md:flex items-center gap-3"
-            >
-              <span className="text-xs font-bold uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">
-                {viewMode === 'roteiros' ? 'Ver Posts' : 'Ver Roteiros'}
-              </span>
-              <ArrowRight className={`w-6 h-6 transition-transform ${viewMode === 'quickPosts' ? 'rotate-180' : ''}`} />
-            </button>
-
-            {/* Mobile Toggle */}
-            <button 
-              onClick={() => setViewMode(viewMode === 'roteiros' ? 'quickPosts' : 'roteiros')}
-              className="mt-8 md:hidden bg-orange-600 text-white px-6 py-3 rounded-full font-bold flex items-center justify-center gap-2 mx-auto"
-            >
-              {viewMode === 'roteiros' ? 'Ver Posts Rápidos' : 'Ver Roteiros'}
-              <ArrowRight className={`w-4 h-4 ${viewMode === 'quickPosts' ? 'rotate-180' : ''}`} />
-            </button>
+            {/* Modern Toggle Control */}
+            <div className="mt-12 flex justify-center">
+              <div className="bg-white p-1.5 rounded-full shadow-xl border border-stone-100 flex items-center relative">
+                <motion.div
+                  layoutId="active-toggle"
+                  className="absolute bg-orange-600 rounded-full h-[calc(100%-12px)] z-0"
+                  initial={false}
+                  animate={{
+                    left: viewMode === 'roteiros' ? '6px' : '50%',
+                    width: 'calc(50% - 6px)'
+                  }}
+                  transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                />
+                <button 
+                  onClick={() => setViewMode('roteiros')}
+                  className={`relative z-10 px-8 py-3 rounded-full text-xs font-bold uppercase tracking-widest transition-colors duration-300 flex items-center gap-2 ${viewMode === 'roteiros' ? 'text-white' : 'text-stone-400 hover:text-stone-600'}`}
+                >
+                  <Map className="w-4 h-4" />
+                  Roteiros
+                </button>
+                <button 
+                  onClick={() => setViewMode('quickPosts')}
+                  className={`relative z-10 px-8 py-3 rounded-full text-xs font-bold uppercase tracking-widest transition-colors duration-300 flex items-center gap-2 ${viewMode === 'quickPosts' ? 'text-white' : 'text-stone-400 hover:text-stone-600'}`}
+                >
+                  <ImageIcon className="w-4 h-4" />
+                  Posts Rápidos
+                </button>
+              </div>
+            </div>
           </div>
 
           <AnimatePresence mode="wait">

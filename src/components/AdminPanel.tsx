@@ -10,11 +10,8 @@ import {
   query, 
   orderBy 
 } from 'firebase/firestore';
-import { 
-  ref, 
-  uploadBytes, 
-  getDownloadURL 
-} from 'firebase/storage';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import imageCompression from 'browser-image-compression';
 import { 
   signInWithEmailAndPassword,
   onAuthStateChanged,
@@ -88,6 +85,7 @@ export default function AdminPanel({ onExit }: { onExit: () => void }) {
   const [editingRoteiro, setEditingRoteiro] = useState<Partial<Roteiro> | null>(null);
   const [editingQuickPost, setEditingQuickPost] = useState<Partial<QuickPost> | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [contactInfo, setContactInfo] = useState<ContactInfo>({
     phone: '',
     whatsapp: '',
@@ -177,17 +175,42 @@ export default function AdminPanel({ onExit }: { onExit: () => void }) {
 
   const handleFileUpload = async (file: File, path: string): Promise<string> => {
     setUploading(true);
+    setUploadProgress(0);
     try {
+      const options = {
+        maxSizeMB: 1,
+        maxWidthOrHeight: 1920,
+        useWebWorker: true
+      };
+      
+      const compressedFile = await imageCompression(file, options);
       const storageRef = ref(storage, `${path}/${Date.now()}_${file.name}`);
-      const snapshot = await uploadBytes(storageRef, file);
-      const url = await getDownloadURL(snapshot.ref);
-      return url;
+      const uploadTask = uploadBytesResumable(storageRef, compressedFile);
+
+      return new Promise((resolve, reject) => {
+        uploadTask.on('state_changed', 
+          (snapshot) => {
+            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            setUploadProgress(progress);
+          }, 
+          (error) => {
+            console.error("Error uploading file:", error);
+            alert("Erro ao fazer upload da imagem.");
+            setUploading(false);
+            reject(error);
+          }, 
+          async () => {
+            const url = await getDownloadURL(uploadTask.snapshot.ref);
+            setUploading(false);
+            setUploadProgress(0);
+            resolve(url);
+          }
+        );
+      });
     } catch (error) {
-      console.error("Error uploading file:", error);
-      alert("Erro ao fazer upload da imagem.");
-      throw error;
-    } finally {
+      console.error("Error compressing file:", error);
       setUploading(false);
+      throw error;
     }
   };
 
@@ -674,9 +697,13 @@ export default function AdminPanel({ onExit }: { onExit: () => void }) {
                             </button>
                           </div>
                         ))}
-                        <label className="w-20 h-20 rounded-lg border-2 border-dashed border-stone-200 flex flex-col items-center justify-center cursor-pointer hover:border-orange-500 hover:bg-orange-50 transition-all">
+                        <label className="w-20 h-20 rounded-lg border-2 border-dashed border-stone-200 flex flex-col items-center justify-center cursor-pointer hover:border-orange-500 hover:bg-orange-50 transition-all relative overflow-hidden">
                           {uploading ? (
-                            <Loader2 className="w-6 h-6 text-orange-600 animate-spin" />
+                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm">
+                              <Loader2 className="w-6 h-6 text-orange-600 animate-spin mb-1" />
+                              <span className="text-[8px] font-bold text-orange-600">{Math.round(uploadProgress)}%</span>
+                              <div className="absolute bottom-0 left-0 h-1 bg-orange-600 transition-all duration-300" style={{ width: `${uploadProgress}%` }} />
+                            </div>
                           ) : (
                             <>
                               <Upload className="w-6 h-6 text-stone-400" />
@@ -709,9 +736,12 @@ export default function AdminPanel({ onExit }: { onExit: () => void }) {
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-stone-400 uppercase tracking-widest">Flyer (Imagem do Roteiro)</label>
                     <div className="flex gap-4">
-                      <label className="flex-1 h-12 rounded-xl border-2 border-dashed border-stone-200 flex items-center justify-center gap-2 cursor-pointer hover:border-orange-500 hover:bg-orange-50 transition-all">
+                      <label className="flex-1 h-12 rounded-xl border-2 border-dashed border-stone-200 flex items-center justify-center gap-2 cursor-pointer hover:border-orange-500 hover:bg-orange-50 transition-all relative overflow-hidden">
                         {uploading ? (
-                          <Loader2 className="w-4 h-4 text-orange-600 animate-spin" />
+                          <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm">
+                            <Loader2 className="w-4 h-4 text-orange-600 animate-spin mb-1" />
+                            <span className="text-[8px] font-bold text-orange-600">{Math.round(uploadProgress)}%</span>
+                          </div>
                         ) : (
                           <>
                             <Upload className="w-4 h-4 text-stone-400" />
@@ -843,9 +873,17 @@ export default function AdminPanel({ onExit }: { onExit: () => void }) {
                       </div>
                     )}
                     <div className="flex gap-4">
-                      <label className="flex-1 h-16 rounded-2xl border-2 border-dashed border-stone-200 flex items-center justify-center gap-3 cursor-pointer hover:border-orange-500 hover:bg-orange-50 transition-all">
+                      <label className="flex-1 h-16 rounded-2xl border-2 border-dashed border-stone-200 flex items-center justify-center gap-3 cursor-pointer hover:border-orange-500 hover:bg-orange-50 transition-all relative overflow-hidden">
                         {uploading ? (
-                          <Loader2 className="w-6 h-6 text-orange-600 animate-spin" />
+                          <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm">
+                            <div className="flex items-center gap-2 mb-1">
+                              <Loader2 className="w-5 h-5 text-orange-600 animate-spin" />
+                              <span className="text-xs font-bold text-orange-600">{Math.round(uploadProgress)}%</span>
+                            </div>
+                            <div className="w-24 h-1 bg-stone-100 rounded-full overflow-hidden">
+                              <div className="h-full bg-orange-600 transition-all duration-300" style={{ width: `${uploadProgress}%` }} />
+                            </div>
+                          </div>
                         ) : (
                           <>
                             <Upload className="w-6 h-6 text-stone-400" />
