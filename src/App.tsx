@@ -847,7 +847,9 @@ export default function App() {
   const [showSunsetGuide, setShowSunsetGuide] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
   const [roteiros, setRoteiros] = useState<any[]>([]);
+  const [quickPosts, setQuickPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [viewMode, setViewMode] = useState<'roteiros' | 'quickPosts'>('roteiros');
   const [contactInfo, setContactInfo] = useState<any>({
     phone: '5527998597568',
     whatsapp: '5527998597568',
@@ -875,6 +877,12 @@ export default function App() {
         });
 
         setRoteiros(roteirosData);
+
+        // Fetch Quick Posts
+        const qp = query(collection(db, 'quick_posts'), orderBy('createdAt', 'desc'));
+        const qpSnapshot = await getDocs(qp);
+        const qpData = qpSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setQuickPosts(qpData);
 
         // Fetch Settings
         const settingsSnap = await getDocs(collection(db, 'settings'));
@@ -1122,113 +1130,192 @@ export default function App() {
       {/* Featured Roteiros Section */}
       <section id="roteiros" className="py-24 px-6 bg-stone-50">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <span className="text-orange-600 font-bold text-xs uppercase tracking-[0.3em] mb-4 block">Planeje sua Aventura</span>
-            <h2 className="text-4xl md:text-5xl font-bold text-stone-900 tracking-tight">Roteiros Exclusivos</h2>
+          <div className="text-center mb-16 relative">
+            <span className="text-orange-600 font-bold text-xs uppercase tracking-[0.3em] mb-4 block">
+              {viewMode === 'roteiros' ? 'Planeje sua Aventura' : 'Momentos Reais'}
+            </span>
+            <h2 className="text-4xl md:text-5xl font-bold text-stone-900 tracking-tight">
+              {viewMode === 'roteiros' ? 'Roteiros Exclusivos' : 'Posts Rápidos'}
+            </h2>
             <p className="text-stone-500 mt-4 max-w-2xl mx-auto">
-              Escolha um de nossos roteiros cuidadosamente planejados para você aproveitar o melhor do Espírito Santo com conforto e segurança.
+              {viewMode === 'roteiros' 
+                ? 'Escolha um de nossos roteiros cuidadosamente planejados para você aproveitar o melhor do Espírito Santo com conforto e segurança.'
+                : 'Confira fotos reais de nossos últimos passeios e sinta a energia de cada destino.'}
             </p>
+
+            {/* View Toggle Button */}
+            <button 
+              onClick={() => setViewMode(viewMode === 'roteiros' ? 'quickPosts' : 'roteiros')}
+              className="absolute right-0 top-1/2 -translate-y-1/2 bg-white p-4 rounded-full shadow-xl border border-stone-100 text-orange-600 hover:bg-orange-600 hover:text-white transition-all group hidden md:flex items-center gap-3"
+            >
+              <span className="text-xs font-bold uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">
+                {viewMode === 'roteiros' ? 'Ver Posts' : 'Ver Roteiros'}
+              </span>
+              <ArrowRight className={`w-6 h-6 transition-transform ${viewMode === 'quickPosts' ? 'rotate-180' : ''}`} />
+            </button>
+
+            {/* Mobile Toggle */}
+            <button 
+              onClick={() => setViewMode(viewMode === 'roteiros' ? 'quickPosts' : 'roteiros')}
+              className="mt-8 md:hidden bg-orange-600 text-white px-6 py-3 rounded-full font-bold flex items-center justify-center gap-2 mx-auto"
+            >
+              {viewMode === 'roteiros' ? 'Ver Posts Rápidos' : 'Ver Roteiros'}
+              <ArrowRight className={`w-4 h-4 ${viewMode === 'quickPosts' ? 'rotate-180' : ''}`} />
+            </button>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-            {roteiros.map((roteiro, index) => (
+          <AnimatePresence mode="wait">
+            {viewMode === 'roteiros' ? (
               <motion.div 
-                key={roteiro.id}
-                initial={{ opacity: 0, scale: 0.95 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.1 }}
-                onClick={() => setSelectedRoteiro(roteiro)}
-                className="bg-white rounded-[2.5rem] overflow-hidden shadow-xl border border-stone-100 flex flex-col md:flex-row group cursor-pointer hover:border-orange-200 transition-colors"
+                key="roteiros-grid"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                className="grid grid-cols-1 lg:grid-cols-2 gap-12"
               >
-                <RoteiroImage roteiro={roteiro} />
-                <div className="md:w-3/5 p-6 md:p-10 flex flex-col justify-between relative bg-white">
-                  <div className="absolute top-4 right-4 md:top-6 md:right-8 z-20">
-                    <span className="flex items-center gap-1 text-[9px] md:text-[10px] font-bold text-[#00c853] uppercase tracking-widest bg-[#e8f5e9] px-3 py-1.5 md:px-4 md:py-2 rounded-full border border-[#c8e6c9] shadow-sm">
-                      <IdCard className="w-3 h-3 md:w-3.5 md:h-3.5" /> GUIA CREDENCIADO
-                    </span>
-                  </div>
-                  
-                  <div className="mt-8 md:mt-4">
-                    <div className="mb-6">
-                      <h3 className="text-2xl md:text-3xl font-bold text-[#1c1917] leading-tight whitespace-nowrap overflow-hidden text-ellipsis">{roteiro.title}</h3>
-                      {roteiro.timeDeparture && roteiro.timeReturn ? (
-                        <div className="flex items-center gap-2 mt-2 text-stone-500">
-                          <Clock className="w-4 h-4 text-orange-600" />
-                          <span className="text-xs md:text-[11px] font-bold uppercase tracking-wider">Ida: {roteiro.timeDeparture} | Volta: {roteiro.timeReturn}</span>
-                        </div>
-                      ) : roteiro.time && (
-                        <div className="flex items-center gap-2 mt-2 text-stone-500">
-                          <Clock className="w-4 h-4 text-orange-600" />
-                          <span className="text-xs md:text-sm font-bold uppercase tracking-wider">{roteiro.time}</span>
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div className="mb-8">
-                      <h4 className="text-[10px] md:text-[11px] font-black text-stone-400 uppercase tracking-widest mb-4">O QUE VOCÊ VAI VISITAR:</h4>
-                      <div className="flex flex-wrap gap-2">
-                        {roteiro.places.slice(0, 4).map(place => (
-                          <span key={place} className="bg-[#f5f5f5] text-stone-600 px-3 py-2 md:px-4 md:py-2 rounded-xl text-[10px] md:text-[11px] font-bold">
-                            {place}
-                          </span>
-                        ))}
-                        {roteiro.places.length > 4 && (
-                          <span className="text-[10px] md:text-[11px] text-stone-400 font-bold py-2 ml-1">+{roteiro.places.length - 4} LOCAIS</span>
-                        )}
-                      </div>
-                    </div>
-                    
-                    <button 
-                      onClick={() => setSelectedRoteiro(roteiro)}
-                      className="text-[#ff4500] font-black text-xs md:text-sm flex items-center gap-2 hover:gap-3 transition-all mb-8 group/link"
-                    >
-                      Ver História e Detalhes 
-                      <ChevronRight className="w-4 h-4 md:w-5 md:h-5 group-hover/link:translate-x-1 transition-transform" />
-                    </button>
-                  </div>
-
-                  <div className="mb-6 flex flex-col border-t border-stone-100 pt-6 gap-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] md:text-[11px] font-black text-stone-400 uppercase tracking-widest">Valor do Investimento</span>
-                      <div className="flex items-baseline gap-1 whitespace-nowrap">
-                        <span className="text-sm md:text-base font-black text-[#ff4500]">R$</span>
-                        <span className="text-2xl md:text-3xl font-black text-[#ff4500]">{roteiro.price}</span>
-                      </div>
-                    </div>
-                    
-                    {(roteiro.priceCash || roteiro.priceInstallment) && (
-                      <div className="flex flex-col gap-1 bg-stone-50 p-3 rounded-xl border border-stone-100">
-                        {roteiro.priceCash && (
-                          <div className="flex items-center justify-between">
-                            <span className="text-[9px] font-bold text-stone-500 uppercase tracking-widest">À Vista:</span>
-                            <span className="text-sm font-black text-green-600">R$ {roteiro.priceCash}</span>
-                          </div>
-                        )}
-                        {roteiro.priceInstallment && (
-                          <div className="flex items-center justify-between">
-                            <span className="text-[9px] font-bold text-stone-500 uppercase tracking-widest">Parcelado:</span>
-                            <span className="text-sm font-black text-orange-600">R$ {roteiro.priceInstallment}</span>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  <button 
-                    onClick={() => {
-                      setBookingRoteiro(roteiro);
-                      setIsBookingModalOpen(true);
-                    }}
-                    className="w-full bg-[#1c1917] text-white py-4 md:py-5 rounded-[1.25rem] md:rounded-[1.5rem] font-black hover:bg-[#ff4500] transition-all flex items-center justify-center gap-3 group/btn shadow-xl shadow-black/10"
+                {roteiros.map((roteiro, index) => (
+                  <motion.div 
+                    key={roteiro.id}
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    whileInView={{ opacity: 1, scale: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: index * 0.1 }}
+                    onClick={() => setSelectedRoteiro(roteiro)}
+                    className="bg-white rounded-[2.5rem] overflow-hidden shadow-xl border border-stone-100 flex flex-col md:flex-row group cursor-pointer hover:border-orange-200 transition-colors"
                   >
-                    <span className="text-sm md:text-base">Reservar Agora</span>
-                    <ArrowRight className="w-4 h-4 md:w-5 md:h-5 group-hover/btn:translate-x-1 transition-transform" />
-                  </button>
-                </div>
+                    <RoteiroImage roteiro={roteiro} />
+                    <div className="md:w-3/5 p-6 md:p-10 flex flex-col justify-between relative bg-white">
+                      <div className="absolute top-4 right-4 md:top-6 md:right-8 z-20">
+                        <span className="flex items-center gap-1 text-[9px] md:text-[10px] font-bold text-[#00c853] uppercase tracking-widest bg-[#e8f5e9] px-3 py-1.5 md:px-4 md:py-2 rounded-full border border-[#c8e6c9] shadow-sm">
+                          <IdCard className="w-3 h-3 md:w-3.5 md:h-3.5" /> GUIA CREDENCIADO
+                        </span>
+                      </div>
+                      
+                      <div className="mt-8 md:mt-4">
+                        <div className="mb-6">
+                          <h3 className="text-2xl md:text-3xl font-bold text-[#1c1917] leading-tight whitespace-nowrap overflow-hidden text-ellipsis">{roteiro.title}</h3>
+                          {roteiro.timeDeparture && roteiro.timeReturn ? (
+                            <div className="flex items-center gap-2 mt-2 text-stone-500">
+                              <Clock className="w-4 h-4 text-orange-600" />
+                              <span className="text-xs md:text-[11px] font-bold uppercase tracking-wider">Ida: {roteiro.timeDeparture} | Volta: {roteiro.timeReturn}</span>
+                            </div>
+                          ) : roteiro.time && (
+                            <div className="flex items-center gap-2 mt-2 text-stone-500">
+                              <Clock className="w-4 h-4 text-orange-600" />
+                              <span className="text-xs md:text-sm font-bold uppercase tracking-wider">{roteiro.time}</span>
+                            </div>
+                          )}
+                        </div>
+                        
+                        <div className="mb-8">
+                          <h4 className="text-[10px] md:text-[11px] font-black text-stone-400 uppercase tracking-widest mb-4">O QUE VOCÊ VAI VISITAR:</h4>
+                          <div className="flex flex-wrap gap-2">
+                            {roteiro.places.slice(0, 4).map(place => (
+                              <span key={place} className="bg-[#f5f5f5] text-stone-600 px-3 py-2 md:px-4 md:py-2 rounded-xl text-[10px] md:text-[11px] font-bold">
+                                {place}
+                              </span>
+                            ))}
+                            {roteiro.places.length > 4 && (
+                              <span className="text-[10px] md:text-[11px] text-stone-400 font-bold py-2 ml-1">+{roteiro.places.length - 4} LOCAIS</span>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <button 
+                          onClick={() => setSelectedRoteiro(roteiro)}
+                          className="text-[#ff4500] font-black text-xs md:text-sm flex items-center gap-2 hover:gap-3 transition-all mb-8 group/link"
+                        >
+                          Ver História e Detalhes 
+                          <ChevronRight className="w-4 h-4 md:w-5 md:h-5 group-hover/link:translate-x-1 transition-transform" />
+                        </button>
+                      </div>
+
+                      <div className="mb-6 flex flex-col border-t border-stone-100 pt-6 gap-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] md:text-[11px] font-black text-stone-400 uppercase tracking-widest">Valor do Investimento</span>
+                          <div className="flex items-baseline gap-1 whitespace-nowrap">
+                            <span className="text-sm md:text-base font-black text-[#ff4500]">R$</span>
+                            <span className="text-2xl md:text-3xl font-black text-[#ff4500]">{roteiro.price}</span>
+                          </div>
+                        </div>
+                        
+                        {(roteiro.priceCash || roteiro.priceInstallment) && (
+                          <div className="flex flex-col gap-1 bg-stone-50 p-3 rounded-xl border border-stone-100">
+                            {roteiro.priceCash && (
+                              <div className="flex items-center justify-between">
+                                <span className="text-[9px] font-bold text-stone-500 uppercase tracking-widest">À Vista:</span>
+                                <span className="text-sm font-black text-green-600">R$ {roteiro.priceCash}</span>
+                              </div>
+                            )}
+                            {roteiro.priceInstallment && (
+                              <div className="flex items-center justify-between">
+                                <span className="text-[9px] font-bold text-stone-500 uppercase tracking-widest">Parcelado:</span>
+                                <span className="text-sm font-black text-orange-600">R$ {roteiro.priceInstallment}</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      <button 
+                        onClick={() => {
+                          setBookingRoteiro(roteiro);
+                          setIsBookingModalOpen(true);
+                        }}
+                        className="w-full bg-[#1c1917] text-white py-4 md:py-5 rounded-[1.25rem] md:rounded-[1.5rem] font-black hover:bg-[#ff4500] transition-all flex items-center justify-center gap-3 group/btn shadow-xl shadow-black/10"
+                      >
+                        <span className="text-sm md:text-base">Reservar Agora</span>
+                        <ArrowRight className="w-4 h-4 md:w-5 md:h-5 group-hover/btn:translate-x-1 transition-transform" />
+                      </button>
+                    </div>
+                  </motion.div>
+                ))}
               </motion.div>
-            ))}
-          </div>
+            ) : (
+              <motion.div 
+                key="quick-posts-grid"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8"
+              >
+                {quickPosts.length > 0 ? (
+                  quickPosts.map((post, index) => (
+                    <motion.div 
+                      key={post.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ delay: index * 0.05 }}
+                      className="bg-white rounded-[2rem] overflow-hidden shadow-lg border border-stone-100 group flex flex-col"
+                    >
+                      <div className="aspect-[4/5] relative overflow-hidden">
+                        <FadeInImage 
+                          src={post.image} 
+                          alt={post.description} 
+                          className="w-full h-full transition-transform duration-700 group-hover:scale-110"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-6">
+                          <p className="text-white text-xs font-medium leading-relaxed italic">
+                            "{post.comment}"
+                          </p>
+                        </div>
+                      </div>
+                      <div className="p-6">
+                        <h3 className="font-bold text-stone-900 text-lg mb-2">{post.description}</h3>
+                        <p className="text-stone-500 text-sm italic">"{post.comment}"</p>
+                      </div>
+                    </motion.div>
+                  ))
+                ) : (
+                  <div className="col-span-full py-20 text-center">
+                    <ImageIcon className="w-12 h-12 text-stone-200 mx-auto mb-4" />
+                    <p className="text-stone-400 font-medium">Nenhum post rápido ainda.</p>
+                  </div>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </section>
 
