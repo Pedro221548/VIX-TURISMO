@@ -868,15 +868,8 @@ export default function App() {
                   </div>
                   
                   <div className="mt-8 md:mt-4">
-                    <div className="flex justify-between items-start mb-6 gap-2">
-                      <h3 className="text-2xl md:text-3xl font-bold text-[#1c1917] leading-tight flex-1">{roteiro.title}</h3>
-                      <div className="text-right flex flex-col items-end shrink-0">
-                        <span className="text-[9px] md:text-[10px] text-stone-400 block uppercase font-black tracking-widest mb-1">VALOR</span>
-                        <div className="flex flex-col items-end leading-none">
-                          <span className="text-base md:text-xl font-black text-[#ff4500]">R$</span>
-                          <span className="text-2xl md:text-3xl font-black text-[#ff4500]">{roteiro.price}</span>
-                        </div>
-                      </div>
+                    <div className="mb-6">
+                      <h3 className="text-2xl md:text-3xl font-bold text-[#1c1917] leading-tight whitespace-nowrap overflow-hidden text-ellipsis">{roteiro.title}</h3>
                     </div>
                     
                     <div className="mb-8">
@@ -900,6 +893,14 @@ export default function App() {
                       Ver História e Detalhes 
                       <ChevronRight className="w-4 h-4 md:w-5 md:h-5 group-hover/link:translate-x-1 transition-transform" />
                     </button>
+                  </div>
+
+                  <div className="mb-6 flex items-center justify-between border-t border-stone-100 pt-6">
+                    <span className="text-[10px] md:text-[11px] font-black text-stone-400 uppercase tracking-widest">Valor do Investimento</span>
+                    <div className="flex items-baseline gap-1 whitespace-nowrap">
+                      <span className="text-sm md:text-base font-black text-[#ff4500]">R$</span>
+                      <span className="text-2xl md:text-3xl font-black text-[#ff4500]">{roteiro.price}</span>
+                    </div>
                   </div>
 
                   <a 
