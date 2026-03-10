@@ -12,6 +12,7 @@ import {
   MapPin, 
   Navigation, 
   Camera, 
+  Image as ImageIcon,
   Utensils, 
   Waves, 
   Sun, 
@@ -40,7 +41,8 @@ const INITIAL_ROTEIROS = [
     title: "Praias de Guarapari",
     subtitle: "ROTEIRO 1",
     price: "450,00",
-    time: "08:00 às 16:00",
+    timeDeparture: "08:00",
+    timeReturn: "16:00",
     images: [
       "https://prefiroguarapari.com.br/wp-content/uploads/2024/08/praia-do-morro-em-guarapari.jpg",
       "https://terracapixaba.com/wp-content/uploads/2023/12/praia-de-peracanga-enseada-azul-guarapari-1-1.webp",
@@ -57,7 +59,8 @@ const INITIAL_ROTEIROS = [
     title: "Domingos Martins e Pedra Azul",
     subtitle: "Roteiro 2",
     price: "600,00",
-    time: "08:00 às 16:00",
+    timeDeparture: "08:00",
+    timeReturn: "16:00",
     images: [
       "https://www.correiobraziliense.com.br/aqui/wp-content/uploads/2025/08/1280px-Pedra_Azul_006.jpg",
       "https://th.bing.com/th/id/OIP.AMFkZfcV0hMHbAbBYPdt0QHaE8?w=279&h=186&c=7&r=0&o=7&pid=1.7&rm=3",
@@ -78,7 +81,8 @@ const INITIAL_ROTEIROS = [
     title: "Buda Gigante e Santa Teresa",
     subtitle: "Roteiro 3",
     price: "600,00",
-    time: "08:00 às 16:00",
+    timeDeparture: "08:00",
+    timeReturn: "16:00",
     images: [
       "https://www.neosenses.com.br/wp-content/uploads/2021/04/88e258d8-12d9-4857-b339-76bef25163c8.jpg",
       "https://th.bing.com/th/id/OIP.Rki4DjPS_BivGYA1Pc3WqwHaFj?w=247&h=185&c=7&r=0&o=7&pid=1.7&rm=3",
@@ -96,7 +100,8 @@ const INITIAL_ROTEIROS = [
     title: "Vitória e Vila Velha",
     subtitle: "Roteiro 4",
     price: "450,00",
-    time: "08:00 às 16:00",
+    timeDeparture: "08:00",
+    timeReturn: "16:00",
     images: [
       "https://dynamic-media-cdn.tripadvisor.com/media/photo-o/12/c8/71/f4/photo0jpg.jpg?w=1000&h=-1&s=1",
       "https://clickmuseus.com.br/wp-content/uploads/2021/11/Moldando-a-panela-de-barro-1170x878-2.jpg",
@@ -115,7 +120,8 @@ const INITIAL_ROTEIROS = [
     title: "Anchieta e Meaípe",
     subtitle: "Roteiro 5",
     price: "550,00",
-    time: "08:00 às 16:00",
+    timeDeparture: "08:00",
+    timeReturn: "16:00",
     images: [
       "https://terracapixaba.com.br/wp-content/uploads/2023/12/santuario-nacional-de-sao-jose-de-anchieta-anchieta-es-1.webp",
       "https://th.bing.com/th/id/OIP.X4K_X4K_X4K_X4K_X4K_X4K_X4K?w=800&h=600&c=7&r=0&o=7&pid=1.7",
@@ -130,7 +136,8 @@ const INITIAL_ROTEIROS = [
     title: "Venda Nova do Imigrante",
     subtitle: "Roteiro 6",
     price: "650,00",
-    time: "08:00 às 16:00",
+    timeDeparture: "08:00",
+    timeReturn: "16:00",
     images: [
       "https://th.bing.com/th/id/OIP.TreHpZPYn_3Ju_naltGHKAHaE2?rs=1&pid=ImgDetMain&o=7&rm=3",
       "https://uploads.folhavitoria.com.br/2025/02/QACT0jNh-FACHADA-KEBIS-BISCOITOS-1536x864.webp",
@@ -546,7 +553,12 @@ function RoteiroModal({ roteiro, onClose, contactInfo }: { roteiro: any, onClose
               {roteiro.subtitle}
             </span>
             <h2 className="text-3xl md:text-4xl font-bold text-stone-900">{roteiro.title}</h2>
-            {roteiro.time && (
+            {roteiro.timeDeparture && roteiro.timeReturn ? (
+              <div className="flex items-center gap-2 mt-2 text-stone-500">
+                <Clock className="w-4 h-4 text-orange-600" />
+                <span className="text-xs md:text-sm font-bold uppercase tracking-wider">Ida: {roteiro.timeDeparture} | Volta: {roteiro.timeReturn}</span>
+              </div>
+            ) : roteiro.time && (
               <div className="flex items-center gap-2 mt-2 text-stone-500">
                 <Clock className="w-4 h-4 text-orange-600" />
                 <span className="text-xs md:text-sm font-bold uppercase tracking-wider">{roteiro.time}</span>
@@ -593,6 +605,33 @@ function RoteiroModal({ roteiro, onClose, contactInfo }: { roteiro: any, onClose
               ))}
             </div>
           </div>
+
+          {roteiro.courtesy && roteiro.courtesy.length > 0 && (
+            <div className="mb-12">
+              <h4 className="font-bold text-stone-900 mb-6 flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-orange-600" /> Cortesias Incluídas
+              </h4>
+              <div className="flex flex-wrap gap-3">
+                {roteiro.courtesy.map((item: string) => (
+                  <div key={item} className="flex items-center gap-2 px-4 py-2 bg-orange-50 rounded-xl border border-orange-100">
+                    <div className="w-1.5 h-1.5 rounded-full bg-orange-600" />
+                    <span className="text-sm text-stone-700 font-bold">{item}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {roteiro.flyer && (
+            <div className="mb-12">
+              <h4 className="font-bold text-stone-900 mb-6 flex items-center gap-2">
+                <ImageIcon className="w-5 h-5 text-orange-600" /> Flyer do Roteiro
+              </h4>
+              <div className="rounded-3xl overflow-hidden border border-stone-200 shadow-lg">
+                <FadeInImage src={roteiro.flyer} alt="Flyer" className="w-full h-auto" />
+              </div>
+            </div>
+          )}
 
           <div className="flex flex-col md:flex-row items-center justify-between gap-6 pt-8 border-t border-stone-100">
             <div className="flex flex-col gap-2">
@@ -1151,7 +1190,12 @@ export default function App() {
                   <div className="mt-8 md:mt-4">
                     <div className="mb-6">
                       <h3 className="text-2xl md:text-3xl font-bold text-[#1c1917] leading-tight whitespace-nowrap overflow-hidden text-ellipsis">{roteiro.title}</h3>
-                      {roteiro.time && (
+                      {roteiro.timeDeparture && roteiro.timeReturn ? (
+                        <div className="flex items-center gap-2 mt-2 text-stone-500">
+                          <Clock className="w-4 h-4 text-orange-600" />
+                          <span className="text-xs md:text-[11px] font-bold uppercase tracking-wider">Ida: {roteiro.timeDeparture} | Volta: {roteiro.timeReturn}</span>
+                        </div>
+                      ) : roteiro.time && (
                         <div className="flex items-center gap-2 mt-2 text-stone-500">
                           <Clock className="w-4 h-4 text-orange-600" />
                           <span className="text-xs md:text-sm font-bold uppercase tracking-wider">{roteiro.time}</span>

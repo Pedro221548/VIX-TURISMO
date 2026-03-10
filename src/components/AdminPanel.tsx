@@ -48,6 +48,10 @@ interface Roteiro {
   history: string;
   gastronomy: string;
   curiosities: string;
+  courtesy?: string[];
+  flyer?: string;
+  timeDeparture?: string;
+  timeReturn?: string;
 }
 
 interface ContactInfo {
@@ -291,7 +295,7 @@ export default function AdminPanel({ onExit }: { onExit: () => void }) {
               <MapPin className="w-6 h-6 text-orange-600" /> Gerenciar Roteiros
             </h2>
             <button 
-              onClick={() => setEditingRoteiro({ title: '', subtitle: '', price: '', images: [], places: [], history: '', gastronomy: '', curiosities: '' })}
+              onClick={() => setEditingRoteiro({ title: '', subtitle: '', price: '', images: [], places: [], history: '', gastronomy: '', curiosities: '', courtesy: [], flyer: '', timeDeparture: '', timeReturn: '' })}
               className="bg-orange-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-orange-700 transition-colors flex items-center gap-2 shadow-lg shadow-orange-600/20"
             >
               <Plus className="w-5 h-5" /> Novo Roteiro
@@ -327,6 +331,14 @@ export default function AdminPanel({ onExit }: { onExit: () => void }) {
                 <div className="p-6">
                   <span className="text-[10px] font-bold text-orange-600 uppercase tracking-widest mb-1 block">{roteiro.subtitle}</span>
                   <h3 className="font-bold text-stone-900 mb-2">{roteiro.title}</h3>
+                  <div className="flex items-center gap-2 mb-3 text-stone-400">
+                    <Clock className="w-3 h-3" />
+                    <span className="text-[10px] font-bold uppercase tracking-wider">
+                      {roteiro.timeDeparture && roteiro.timeReturn 
+                        ? `Ida: ${roteiro.timeDeparture} | Volta: ${roteiro.timeReturn}`
+                        : roteiro.time || 'Horário não definido'}
+                    </span>
+                  </div>
                   <p className="text-sm text-stone-500 line-clamp-2 mb-4">{roteiro.history}</p>
                   <div className="flex flex-col gap-1">
                     <div className="flex items-center justify-between">
@@ -466,13 +478,23 @@ export default function AdminPanel({ onExit }: { onExit: () => void }) {
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-xs font-bold text-stone-400 uppercase tracking-widest">Horário</label>
+                      <label className="text-xs font-bold text-stone-400 uppercase tracking-widest">Horário de Ida</label>
                       <input 
                         type="text" 
-                        value={editingRoteiro.time}
-                        onChange={e => setEditingRoteiro({...editingRoteiro, time: e.target.value})}
+                        value={editingRoteiro.timeDeparture || ''}
+                        onChange={e => setEditingRoteiro({...editingRoteiro, timeDeparture: e.target.value})}
                         className="w-full p-4 bg-stone-50 border border-stone-200 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none"
-                        placeholder="08:00 às 16:00"
+                        placeholder="Ex: 08:00"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-stone-400 uppercase tracking-widest">Horário de Volta</label>
+                      <input 
+                        type="text" 
+                        value={editingRoteiro.timeReturn || ''}
+                        onChange={e => setEditingRoteiro({...editingRoteiro, timeReturn: e.target.value})}
+                        className="w-full p-4 bg-stone-50 border border-stone-200 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none"
+                        placeholder="Ex: 16:00"
                       />
                     </div>
                   </div>
@@ -506,6 +528,16 @@ export default function AdminPanel({ onExit }: { onExit: () => void }) {
                       className="w-full p-4 bg-stone-50 border border-stone-200 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none h-32"
                     />
                   </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-stone-400 uppercase tracking-widest">Flyer (URL da Imagem)</label>
+                    <input 
+                      type="text" 
+                      value={editingRoteiro.flyer || ''}
+                      onChange={e => setEditingRoteiro({...editingRoteiro, flyer: e.target.value})}
+                      className="w-full p-4 bg-stone-50 border border-stone-200 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none"
+                      placeholder="https://..."
+                    />
+                  </div>
                 </div>
 
                 <div className="space-y-6">
@@ -514,6 +546,14 @@ export default function AdminPanel({ onExit }: { onExit: () => void }) {
                     <textarea 
                       value={editingRoteiro.places?.join('\n')}
                       onChange={e => setEditingRoteiro({...editingRoteiro, places: e.target.value.split('\n').filter(l => l.trim())})}
+                      className="w-full p-4 bg-stone-50 border border-stone-200 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none h-32"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-stone-400 uppercase tracking-widest">Cortesias (Uma por linha)</label>
+                    <textarea 
+                      value={editingRoteiro.courtesy?.join('\n')}
+                      onChange={e => setEditingRoteiro({...editingRoteiro, courtesy: e.target.value.split('\n').filter(l => l.trim())})}
                       className="w-full p-4 bg-stone-50 border border-stone-200 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none h-32"
                     />
                   </div>
