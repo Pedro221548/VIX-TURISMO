@@ -121,7 +121,7 @@ interface HeroData {
   backgroundImage: string;
 }
 
-export default function AdminPanel({ onExit }: { onExit: () => void }) {
+export default function AdminPanel({ onExit, initialTab }: { onExit: () => void, initialTab?: 'roteiros' | 'quickPosts' | 'sunset' | 'moqueca' | 'experiences' | 'hero' | 'settings' }) {
   const [user, setUser] = useState<User | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -141,7 +141,7 @@ export default function AdminPanel({ onExit }: { onExit: () => void }) {
   const [editingHero, setEditingHero] = useState<Partial<HeroData> | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [activeTab, setActiveTab] = useState<'roteiros' | 'quickPosts' | 'sunset' | 'moqueca' | 'experiences' | 'hero' | 'settings'>('roteiros');
+  const [activeTab, setActiveTab] = useState(initialTab || 'roteiros');
   const [contactInfo, setContactInfo] = useState<ContactInfo>({
     phone: '',
     whatsapp: '',

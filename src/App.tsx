@@ -35,7 +35,8 @@ import {
   Users,
   Flame,
   ChefHat,
-  Download
+  Download,
+  Plus
 } from 'lucide-react';
 
 const INITIAL_ROTEIROS = [
@@ -861,6 +862,7 @@ export default function App() {
   const [quickPosts, setQuickPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'roteiros' | 'quickPosts'>('roteiros');
+  const [adminTab, setAdminTab] = useState<'roteiros' | 'quickPosts' | 'sunset' | 'moqueca' | 'experiences' | 'hero' | 'settings'>('roteiros');
   const [contactInfo, setContactInfo] = useState<any>({
     phone: '5527998597568',
     whatsapp: '5527998597568',
@@ -1063,7 +1065,7 @@ export default function App() {
 
       <AnimatePresence>
         {showAdmin && (
-          <AdminPanel onExit={() => setShowAdmin(false)} />
+          <AdminPanel onExit={() => setShowAdmin(false)} initialTab={adminTab} />
         )}
         {selectedRoteiro && (
           <RoteiroModal 
@@ -1202,6 +1204,34 @@ export default function App() {
                 </button>
               </div>
             </div>
+
+            {viewMode === 'quickPosts' ? (
+              <div className="mt-8 flex justify-center">
+                <button 
+                  onClick={() => {
+                    setAdminTab('quickPosts');
+                    setShowAdmin(true);
+                  }}
+                  className="bg-stone-900 text-white px-8 py-3 rounded-full text-xs font-bold uppercase tracking-widest hover:bg-orange-600 transition-all shadow-xl shadow-black/10 flex items-center gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  Novo Post
+                </button>
+              </div>
+            ) : (
+              <div className="mt-8 flex justify-center">
+                <button 
+                  onClick={() => {
+                    setAdminTab('roteiros');
+                    setShowAdmin(true);
+                  }}
+                  className="bg-stone-900 text-white px-8 py-3 rounded-full text-xs font-bold uppercase tracking-widest hover:bg-orange-600 transition-all shadow-xl shadow-black/10 flex items-center gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  Novo Roteiro
+                </button>
+              </div>
+            )}
           </div>
 
           <AnimatePresence mode="wait">
@@ -1664,7 +1694,10 @@ export default function App() {
                 © 2024 VIX ES TURISMO. Todos os direitos reservados.
               </p>
               <button 
-                onClick={() => setShowAdmin(true)}
+                onClick={() => {
+                  setAdminTab('roteiros');
+                  setShowAdmin(true);
+                }}
                 className="text-stone-400 hover:text-orange-600 transition-colors text-[10px] font-bold uppercase tracking-widest"
               >
                 Admin
