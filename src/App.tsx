@@ -65,7 +65,8 @@ const INITIAL_ROTEIROS = [
       "https://tse3.mm.bing.net/th/id/OIP.TreHpZPYn_3Ju_naltGHKAHaE2?rs=1&pid=ImgDetMain&o=7&rm=3",
       "https://th.bing.com/th/id/OIP.txQ4_gmxCLKq6SPLDafatAAAAA?w=239&h=180&c=7&r=0&o=7&pid=1.7&rm=3",
       "https://th.bing.com/th/id/OIP.9YlEMVoGdWK-jxvuKJNewAHaFj?w=257&h=193&c=7&r=0&o=7&pid=1.7&rm=3",
-      "https://media-cdn.tripadvisor.com/media/photo-s/0e/a8/1e/0e/frente-da-cervejaria.jpg"
+      "https://media-cdn.tripadvisor.com/media/photo-s/0e/a8/1e/0e/frente-da-cervejaria.jpg",
+      "https://i.imgur.com/JzgCJM6.jpeg"
     ],
     places: ["Parque da Pedra Azul", "Quadrado de São Paulinho", "Cervejaria Ronchi", "Biscoite Kebis", "Igreja Luterana", "Museu do Colono", "Rua do Laser", "Cervejaria Barba Ruiva", "Portal da Cidade"],
     history: "Colonizada por alemães e italianos, a região mantém viva a cultura europeia. Domingos Martins é um pedaço da Alemanha nas montanhas capixabas, com arquitetura enxaimel e festas tradicionais.",
@@ -456,6 +457,28 @@ function MoquecaModal({ onClose }: { onClose: () => void }) {
   );
 }
 
+function FadeInImage({ src, alt, className, loading = "lazy" }: { src: string, alt: string, className?: string, loading?: "lazy" | "eager" }) {
+  const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState(false);
+
+  return (
+    <div className={`relative overflow-hidden bg-stone-100 ${className}`}>
+      {!loaded && !error && (
+        <div className="absolute inset-0 animate-pulse bg-stone-200" />
+      )}
+      <img
+        src={error ? "https://images.unsplash.com/photo-1582650625119-3a31f8fa2699?auto=format&fit=crop&q=60&w=800" : src}
+        alt={alt}
+        loading={loading}
+        referrerPolicy="no-referrer"
+        onLoad={() => setLoaded(true)}
+        onError={() => setError(true)}
+        className={`w-full h-full object-cover transition-opacity duration-700 ${loaded ? 'opacity-100' : 'opacity-0'}`}
+      />
+    </div>
+  );
+}
+
 function RoteiroModal({ roteiro, onClose, contactInfo }: { roteiro: any, onClose: () => void, contactInfo: any }) {
   return (
     <motion.div 
@@ -473,14 +496,11 @@ function RoteiroModal({ roteiro, onClose, contactInfo }: { roteiro: any, onClose
         onClick={e => e.stopPropagation()}
       >
         <div className="relative h-64 md:h-80">
-          <img 
+          <FadeInImage 
             src={roteiro.images ? roteiro.images[0] : roteiro.image} 
             alt={roteiro.title}
-            className="w-full h-full object-cover"
-            onError={(e) => {
-              const target = e.target as HTMLImageElement;
-              target.src = "https://images.unsplash.com/photo-1582650625119-3a31f8fa2699?auto=format&fit=crop&q=80&w=1000";
-            }}
+            className="w-full h-full"
+            loading="eager"
           />
           <button 
             onClick={onClose}
@@ -572,21 +592,20 @@ function RoteiroImage({ roteiro }: { roteiro: any }) {
   return (
     <div className="md:w-2/5 relative overflow-hidden h-64 md:h-auto">
       <AnimatePresence mode="wait">
-        <motion.img
+        <motion.div
           key={currentImage}
-          src={images[currentImage]}
-          alt={roteiro.title}
           initial={{ opacity: 0, scale: 1.1 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
           transition={{ duration: 0.8 }}
-          className="w-full h-full object-cover"
-          referrerPolicy="no-referrer"
-          onError={(e) => {
-            const target = e.target as HTMLImageElement;
-            target.src = "https://images.unsplash.com/photo-1582650625119-3a31f8fa2699?auto=format&fit=crop&q=80&w=1000";
-          }}
-        />
+          className="w-full h-full"
+        >
+          <FadeInImage 
+            src={images[currentImage]} 
+            alt={roteiro.title}
+            className="w-full h-full"
+          />
+        </motion.div>
       </AnimatePresence>
       <div className="absolute inset-0 bg-gradient-to-r from-black/40 to-transparent md:hidden" />
       <div className="absolute top-6 left-6 z-10">
@@ -760,12 +779,25 @@ export default function App() {
         } else {
           const roteirosData = querySnapshot.docs.map(doc => {
             const data = doc.data();
+            let updatedData = { ...data };
+            let hasChanges = false;
+
             // One-time cleanup for Cachoeira da Bica
             if (data.places?.includes("Cachoeira da Bica") || data.images?.some((img: string) => img.includes("cachoeira-da-bica"))) {
-              const updatedPlaces = data.places?.filter((p: string) => p !== "Cachoeira da Bica");
-              const updatedImages = data.images?.filter((img: string) => !img.includes("cachoeira-da-bica"));
-              updateDoc(doc.ref, { places: updatedPlaces, images: updatedImages });
-              return { id: doc.id, ...data, places: updatedPlaces, images: updatedImages };
+              updatedData.places = data.places?.filter((p: string) => p !== "Cachoeira da Bica");
+              updatedData.images = data.images?.filter((img: string) => !img.includes("cachoeira-da-bica"));
+              hasChanges = true;
+            }
+
+            // One-time update for Portal da Cidade image
+            if (data.title === "Domingos Martins e Pedra Azul" && !data.images?.includes("https://i.imgur.com/JzgCJM6.jpeg")) {
+              updatedData.images = [...(updatedData.images || []), "https://i.imgur.com/JzgCJM6.jpeg"];
+              hasChanges = true;
+            }
+
+            if (hasChanges) {
+              updateDoc(doc.ref, updatedData);
+              return { id: doc.id, ...updatedData };
             }
             return { id: doc.id, ...data };
           });
@@ -947,9 +979,10 @@ export default function App() {
             alt="Convento da Penha e Terceira Ponte" 
             className="w-full h-full object-cover scale-105 animate-slow-zoom"
             referrerPolicy="no-referrer"
+            loading="eager"
             onError={(e) => {
               const target = e.target as HTMLImageElement;
-              target.src = "https://images.unsplash.com/photo-1582650625119-3a31f8fa2699?auto=format&fit=crop&q=80&w=1920";
+              target.src = "https://images.unsplash.com/photo-1582650625119-3a31f8fa2699?auto=format&fit=crop&q=60&w=1920";
             }}
           />
           <div className="absolute inset-0 bg-black/40" />
@@ -1136,15 +1169,10 @@ export default function App() {
               <div className="relative w-[300px] h-[600px] bg-stone-900 rounded-[3rem] border-[8px] border-stone-800 shadow-2xl overflow-hidden">
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-stone-800 rounded-b-2xl z-20" />
                 <div className="absolute inset-0 z-10">
-                  <img 
+                  <FadeInImage 
                     src="https://i.imgur.com/72VAfVe.png" 
                     alt="Instagram Preview" 
-                    className="w-full h-full object-cover"
-                    referrerPolicy="no-referrer"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.src = "https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?auto=format&fit=crop&q=80&w=1000";
-                    }}
+                    className="w-full h-full"
                   />
                 </div>
               </div>
@@ -1167,15 +1195,10 @@ export default function App() {
             className="relative"
           >
             <div className="aspect-square rounded-[3rem] overflow-hidden shadow-2xl">
-              <img 
-                src="https://images.unsplash.com/photo-1551024709-8f23befc6f87?auto=format&fit=crop&q=80&w=1000" 
+              <FadeInImage 
+                src="https://images.unsplash.com/photo-1551024709-8f23befc6f87?auto=format&fit=crop&q=60&w=800" 
                 alt="Moqueca Capixaba" 
-                className="w-full h-full object-cover"
-                referrerPolicy="no-referrer"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.src = "https://picsum.photos/seed/moqueca/1000/1000";
-                }}
+                className="w-full h-full"
               />
             </div>
             <div className="absolute -bottom-8 -right-8 bg-white p-8 rounded-3xl shadow-xl max-w-[240px] hidden md:block">
@@ -1240,14 +1263,10 @@ export default function App() {
               className="bg-stone-50 rounded-[2.5rem] overflow-hidden border border-stone-100 group"
             >
               <div className="h-64 overflow-hidden">
-                <img 
+                <FadeInImage 
                   src="https://th.bing.com/th/id/R.0ad79dd8d3412fd581d478ec14806169?rik=tmqoKvlw%2fAwtCA&riu=http%3a%2f%2fcdni.autocarindia.com%2fGalleries%2f20171116073907_virz3.jpg&ehk=zsyEGZpnVZTWR7OhYszlyECrRRxRMTaCJSWRzTLWEcM%3d&risl=&pid=ImgRaw&r=0" 
                   alt="WV VIRTUS" 
-                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.src = "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&q=80&w=1000";
-                  }}
+                  className="w-full h-full group-hover:scale-110 transition-transform duration-500"
                 />
               </div>
               <div className="p-8">
@@ -1268,14 +1287,10 @@ export default function App() {
               className="bg-stone-50 rounded-[2.5rem] overflow-hidden border border-stone-100 group"
             >
               <div className="h-64 overflow-hidden">
-                <img 
+                <FadeInImage 
                   src="https://irmaosbelfort.com.br/vans/van1.jpg" 
                   alt="Van Executiva" 
-                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.src = "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&q=80&w=1000";
-                  }}
+                  className="w-full h-full group-hover:scale-110 transition-transform duration-500"
                 />
               </div>
               <div className="p-8">

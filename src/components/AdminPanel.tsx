@@ -272,6 +272,60 @@ export default function AdminPanel({ onExit }: { onExit: () => void }) {
       </header>
 
       <main className="max-w-6xl mx-auto p-6 space-y-12">
+        {/* Roteiros Section */}
+        <section>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold text-stone-900 flex items-center gap-2">
+              <MapPin className="w-6 h-6 text-orange-600" /> Gerenciar Roteiros
+            </h2>
+            <button 
+              onClick={() => setEditingRoteiro({ title: '', subtitle: '', price: '', images: [], places: [], history: '', gastronomy: '', curiosities: '' })}
+              className="bg-orange-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-orange-700 transition-colors flex items-center gap-2 shadow-lg shadow-orange-600/20"
+            >
+              <Plus className="w-5 h-5" /> Novo Roteiro
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {roteiros.map(roteiro => (
+              <div key={roteiro.id} className="bg-white rounded-3xl overflow-hidden shadow-sm border border-stone-200 group">
+                <div className="h-48 relative bg-stone-100">
+                  <img 
+                    src={roteiro.images[0]} 
+                    alt={roteiro.title} 
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                    referrerPolicy="no-referrer"
+                  />
+                  <div className="absolute top-4 right-4 flex gap-2">
+                    <button 
+                      onClick={() => setEditingRoteiro(roteiro)}
+                      className="bg-white/90 backdrop-blur-sm p-2 rounded-lg text-stone-600 hover:text-orange-600 transition-colors"
+                    >
+                      <Edit className="w-4 h-4" />
+                    </button>
+                    <button 
+                      onClick={() => handleDeleteRoteiro(roteiro.id)}
+                      className="bg-white/90 backdrop-blur-sm p-2 rounded-lg text-stone-600 hover:text-red-600 transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+                <div className="p-6">
+                  <span className="text-[10px] font-bold text-orange-600 uppercase tracking-widest mb-1 block">{roteiro.subtitle}</span>
+                  <h3 className="font-bold text-stone-900 mb-2">{roteiro.title}</h3>
+                  <p className="text-sm text-stone-500 line-clamp-2 mb-4">{roteiro.history}</p>
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-stone-900">R$ {roteiro.price}</span>
+                    <span className="text-xs text-stone-400">{roteiro.places.length} locais</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
         {/* Settings Section */}
         <section>
           <h2 className="text-2xl font-bold text-stone-900 mb-6 flex items-center gap-2">
@@ -326,54 +380,6 @@ export default function AdminPanel({ onExit }: { onExit: () => void }) {
                 <Save className="w-5 h-5" /> Salvar Configurações
               </button>
             </div>
-          </div>
-        </section>
-
-        {/* Roteiros Section */}
-        <section>
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-stone-900 flex items-center gap-2">
-              <MapPin className="w-6 h-6 text-orange-600" /> Gerenciar Roteiros
-            </h2>
-            <button 
-              onClick={() => setEditingRoteiro({ title: '', subtitle: '', price: '', images: [], places: [], history: '', gastronomy: '', curiosities: '' })}
-              className="bg-orange-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-orange-700 transition-colors flex items-center gap-2 shadow-lg shadow-orange-600/20"
-            >
-              <Plus className="w-5 h-5" /> Novo Roteiro
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {roteiros.map(roteiro => (
-              <div key={roteiro.id} className="bg-white rounded-3xl overflow-hidden shadow-sm border border-stone-200 group">
-                <div className="h-48 relative">
-                  <img src={roteiro.images[0]} alt={roteiro.title} className="w-full h-full object-cover" />
-                  <div className="absolute top-4 right-4 flex gap-2">
-                    <button 
-                      onClick={() => setEditingRoteiro(roteiro)}
-                      className="bg-white/90 backdrop-blur-sm p-2 rounded-lg text-stone-600 hover:text-orange-600 transition-colors"
-                    >
-                      <Edit className="w-4 h-4" />
-                    </button>
-                    <button 
-                      onClick={() => handleDeleteRoteiro(roteiro.id)}
-                      className="bg-white/90 backdrop-blur-sm p-2 rounded-lg text-stone-600 hover:text-red-600 transition-colors"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-                <div className="p-6">
-                  <span className="text-[10px] font-bold text-orange-600 uppercase tracking-widest mb-1 block">{roteiro.subtitle}</span>
-                  <h3 className="font-bold text-stone-900 mb-2">{roteiro.title}</h3>
-                  <p className="text-sm text-stone-500 line-clamp-2 mb-4">{roteiro.history}</p>
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-stone-900">R$ {roteiro.price}</span>
-                    <span className="text-xs text-stone-400">{roteiro.places.length} locais</span>
-                  </div>
-                </div>
-              </div>
-            ))}
           </div>
         </section>
       </main>
