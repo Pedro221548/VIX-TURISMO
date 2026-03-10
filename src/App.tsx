@@ -672,7 +672,7 @@ export default function App() {
             <img 
               src="https://i.imgur.com/3hNeKBx.png" 
               alt="VIX ES TURISMO Logo" 
-              className="h-10 w-auto object-contain"
+              className="h-14 w-auto object-contain"
               referrerPolicy="no-referrer"
             />
             <span className={`font-bold text-xl tracking-tight ${scrolled ? 'text-stone-900' : 'text-white'}`}>
@@ -940,7 +940,7 @@ export default function App() {
                 Fique por dentro de novos roteiros, dicas exclusivas e as melhores paisagens do Espírito Santo em tempo real.
               </p>
               <a 
-                href="https://www.instagram.com/vixesturismo/" 
+                href="https://www.instagram.com/city_tour_es/" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-3 bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 text-white px-10 py-5 rounded-full font-bold hover:scale-105 transition-all shadow-2xl shadow-pink-500/20"
@@ -1168,7 +1168,7 @@ export default function App() {
                 <img 
                   src="https://i.imgur.com/3hNeKBx.png" 
                   alt="VIX ES TURISMO Logo" 
-                  className="h-10 w-auto object-contain"
+                  className="h-14 w-auto object-contain"
                   referrerPolicy="no-referrer"
                 />
                 <span className="font-bold text-xl tracking-tight text-stone-900">
