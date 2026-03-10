@@ -631,12 +631,110 @@ const experiences = [
   }
 ];
 
+function BookingModal({ isOpen, onClose, roteiroTitle }: { isOpen: boolean, onClose: () => void, roteiroTitle: string }) {
+  const [name, setName] = useState('');
+  const [date, setDate] = useState('');
+
+  if (!isOpen) return null;
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const hour = new Date().getHours();
+    let greeting = "bom dia";
+    if (hour >= 12 && hour < 18) greeting = "boa tarde";
+    else if (hour >= 18 || hour < 5) greeting = "boa noite";
+
+    // Format date to DD/MM/YYYY for the message
+    const dateObj = new Date(date);
+    const formattedDate = dateObj.toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+
+    const message = `Olá, ${greeting}.
+
+Me chamo *${name}* e gostaria de obter mais informações sobre o *tour para ${roteiroTitle}* na data *${formattedDate}*.
+
+Fico no aguardo do seu retorno.
+Desde já, agradeço pela atenção.`;
+
+    const encodedMessage = encodeURIComponent(message);
+    window.open(`https://wa.me/5527998597568?text=${encodedMessage}`, '_blank');
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-6">
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+        className="absolute inset-0 bg-stone-900/80 backdrop-blur-sm"
+      />
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.9, y: 20 }}
+        className="relative bg-white w-full max-w-md rounded-[2.5rem] p-8 md:p-10 shadow-2xl overflow-hidden"
+      >
+        <button 
+          onClick={onClose}
+          className="absolute top-6 right-6 p-2 hover:bg-stone-100 rounded-full transition-colors"
+        >
+          <X className="w-6 h-6 text-stone-400" />
+        </button>
+
+        <div className="mb-8">
+          <div className="w-12 h-12 bg-orange-100 rounded-2xl flex items-center justify-center text-orange-600 mb-6">
+            <Clock className="w-6 h-6" />
+          </div>
+          <h2 className="text-2xl font-bold text-stone-900 mb-2">Solicitar Reserva</h2>
+          <p className="text-stone-500 text-sm">Preencha os dados abaixo para iniciarmos seu atendimento via WhatsApp.</p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div>
+            <label className="block text-xs font-bold text-stone-400 uppercase tracking-widest mb-2">Seu Nome</label>
+            <input 
+              required
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Como podemos te chamar?"
+              className="w-full bg-stone-50 border border-stone-100 rounded-2xl px-6 py-4 text-stone-900 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-stone-400 uppercase tracking-widest mb-2">Data Desejada</label>
+            <input 
+              required
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="w-full bg-stone-50 border border-stone-100 rounded-2xl px-6 py-4 text-stone-900 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all"
+            />
+          </div>
+
+          <button 
+            type="submit"
+            className="w-full bg-stone-900 text-white py-5 rounded-2xl font-bold hover:bg-orange-600 transition-all shadow-xl shadow-stone-900/10 flex items-center justify-center gap-3 group"
+          >
+            <span>Continuar para WhatsApp</span>
+            <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+          </button>
+        </form>
+      </motion.div>
+    </div>
+  );
+}
+
 export default function App() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [selectedRoteiro, setSelectedRoteiro] = useState<any>(null);
   const [showMoquecaRecipe, setShowMoquecaRecipe] = useState(false);
   const [showSunsetGuide, setShowSunsetGuide] = useState(false);
+  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+  const [bookingRoteiro, setBookingRoteiro] = useState<any>(null);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -648,6 +746,16 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#fafaf9] text-[#1c1917] font-sans selection:bg-orange-100 selection:text-orange-900">
+      <AnimatePresence>
+        {isBookingModalOpen && (
+          <BookingModal 
+            isOpen={isBookingModalOpen} 
+            onClose={() => setIsBookingModalOpen(false)} 
+            roteiroTitle={bookingRoteiro?.title || ''} 
+          />
+        )}
+      </AnimatePresence>
+
       {/* Floating WhatsApp Button */}
       <motion.a 
         href="https://wa.me/5527998597568"
@@ -904,16 +1012,16 @@ export default function App() {
                     </div>
                   </div>
 
-                  <a 
-                    href="https://wa.me/5527998597568" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    onClick={(e) => e.stopPropagation()}
+                  <button 
+                    onClick={() => {
+                      setBookingRoteiro(roteiro);
+                      setIsBookingModalOpen(true);
+                    }}
                     className="w-full bg-[#1c1917] text-white py-4 md:py-5 rounded-[1.25rem] md:rounded-[1.5rem] font-black hover:bg-[#ff4500] transition-all flex items-center justify-center gap-3 group/btn shadow-xl shadow-black/10"
                   >
                     <span className="text-sm md:text-base">Reservar Agora</span>
                     <ArrowRight className="w-4 h-4 md:w-5 md:h-5 group-hover/btn:translate-x-1 transition-transform" />
-                  </a>
+                  </button>
                 </div>
               </motion.div>
             ))}
