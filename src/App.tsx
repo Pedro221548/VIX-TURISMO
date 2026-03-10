@@ -767,13 +767,13 @@ export default function App() {
       <section className="relative h-screen flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0 z-0">
           <img 
-            src="https://images.unsplash.com/photo-1582650625119-3a31f8fa2699?auto=format&fit=crop&q=80&w=1920" 
-            alt="Vitória Skyline" 
+            src="https://upload.wikimedia.org/wikipedia/commons/0/03/Convento_da_Penha_e_Terceira_Ponte_com_Mar_e_Vit%C3%B3ria_ao_fundo.jpg" 
+            alt="Convento da Penha e Terceira Ponte" 
             className="w-full h-full object-cover scale-105 animate-slow-zoom"
             referrerPolicy="no-referrer"
             onError={(e) => {
               const target = e.target as HTMLImageElement;
-              target.src = "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&q=80&w=1920";
+              target.src = "https://images.unsplash.com/photo-1582650625119-3a31f8fa2699?auto=format&fit=crop&q=80&w=1920";
             }}
           />
           <div className="absolute inset-0 bg-black/40" />
@@ -857,7 +857,8 @@ export default function App() {
                 whileInView={{ opacity: 1, scale: 1 }}
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.1 }}
-                className="bg-white rounded-[2.5rem] overflow-hidden shadow-xl border border-stone-100 flex flex-col md:flex-row group"
+                onClick={() => setSelectedRoteiro(roteiro)}
+                className="bg-white rounded-[2.5rem] overflow-hidden shadow-xl border border-stone-100 flex flex-col md:flex-row group cursor-pointer hover:border-orange-200 transition-colors"
               >
                 <RoteiroImage roteiro={roteiro} />
                 <div className="md:w-3/5 p-6 md:p-10 flex flex-col justify-between relative bg-white">
@@ -907,6 +908,7 @@ export default function App() {
                     href="https://wa.me/5527998597568" 
                     target="_blank" 
                     rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
                     className="w-full bg-[#1c1917] text-white py-4 md:py-5 rounded-[1.25rem] md:rounded-[1.5rem] font-black hover:bg-[#ff4500] transition-all flex items-center justify-center gap-3 group/btn shadow-xl shadow-black/10"
                   >
                     <span className="text-sm md:text-base">Reservar Agora</span>
