@@ -177,39 +177,59 @@ export default function AdminPanel({ onExit }: { onExit: () => void }) {
     setUploading(true);
     setUploadProgress(0);
     try {
-      const options = {
-        maxSizeMB: 1,
-        maxWidthOrHeight: 1920,
-        useWebWorker: true
-      };
+      let fileToUpload = file;
       
-      const compressedFile = await imageCompression(file, options);
+      try {
+        const options = {
+          maxSizeMB: 1,
+          maxWidthOrHeight: 1920,
+          useWebWorker: false // Desabilitado para maior compatibilidade em iframes
+        };
+        fileToUpload = await imageCompression(file, options);
+      } catch (compressionError) {
+        console.warn("Compression failed, uploading original file", compressionError);
+        fileToUpload = file;
+      }
+
       const storageRef = ref(storage, `${path}/${Date.now()}_${file.name}`);
-      const uploadTask = uploadBytesResumable(storageRef, compressedFile);
+      const uploadTask = uploadBytesResumable(storageRef, fileToUpload);
 
       return new Promise((resolve, reject) => {
+        // Forçar um progresso inicial para feedback visual
+        setUploadProgress(1);
+
         uploadTask.on('state_changed', 
           (snapshot) => {
             const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-            setUploadProgress(progress);
+            // Garantir que o progresso seja pelo menos 1% se o upload começou
+            setUploadProgress(Math.max(progress, 1));
           }, 
           (error) => {
             console.error("Error uploading file:", error);
-            alert("Erro ao fazer upload da imagem.");
+            alert("Erro ao fazer upload da imagem. Verifique sua conexão ou permissões.");
             setUploading(false);
+            setUploadProgress(0);
             reject(error);
           }, 
           async () => {
-            const url = await getDownloadURL(uploadTask.snapshot.ref);
-            setUploading(false);
-            setUploadProgress(0);
-            resolve(url);
+            try {
+              const url = await getDownloadURL(uploadTask.snapshot.ref);
+              setUploading(false);
+              setUploadProgress(0);
+              resolve(url);
+            } catch (urlError) {
+              console.error("Error getting download URL:", urlError);
+              setUploading(false);
+              setUploadProgress(0);
+              reject(urlError);
+            }
           }
         );
       });
     } catch (error) {
-      console.error("Error compressing file:", error);
+      console.error("General upload error:", error);
       setUploading(false);
+      setUploadProgress(0);
       throw error;
     }
   };
