@@ -199,71 +199,88 @@ export default function AdminPanel({ onExit }: { onExit: () => void }) {
 
   if (!user) {
     return (
-      <div className="fixed inset-0 bg-stone-100 z-[100] flex items-center justify-center p-6">
+      <div className="fixed inset-0 bg-stone-100 z-[100] flex items-center justify-center p-0 md:p-6 overflow-hidden">
         <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white p-8 md:p-12 rounded-[2.5rem] shadow-2xl w-full max-w-md border border-stone-200"
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-white rounded-none md:rounded-[2.5rem] shadow-2xl w-full max-w-5xl h-full md:h-auto md:max-h-[800px] flex flex-col md:flex-row overflow-hidden border border-stone-200"
         >
-          <div className="flex flex-col items-center mb-8">
-            <div className="bg-orange-600 p-4 rounded-2xl mb-4 shadow-lg shadow-orange-600/20">
-              <Lock className="w-8 h-8 text-white" />
+          {/* Image Side */}
+          <div className="hidden md:block md:w-1/2 relative">
+            <img 
+              src="https://upload.wikimedia.org/wikipedia/commons/0/03/Convento_da_Penha_e_Terceira_Ponte_com_Mar_e_Vit%C3%B3ria_ao_fundo.jpg" 
+              alt="Convento da Penha" 
+              className="w-full h-full object-cover"
+              referrerPolicy="no-referrer"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent flex flex-col justify-end p-12">
+              <h3 className="text-3xl font-bold text-white mb-2">Convento da Penha</h3>
+              <p className="text-white/80 text-sm">O maior símbolo da fé e da história capixaba.</p>
             </div>
-            <h2 className="text-2xl font-bold text-stone-900">Acesso Restrito</h2>
-            <p className="text-stone-500 text-sm text-center mt-2">Identifique-se para acessar o painel administrativo</p>
           </div>
 
-          <form onSubmit={handleLogin} className="space-y-6">
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-stone-400 uppercase tracking-widest">Email</label>
-              <div className="relative">
-                <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-stone-400" />
-                <input 
-                  type="email" 
-                  required
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  className="w-full pl-12 pr-4 py-4 bg-stone-50 border border-stone-200 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none transition-all"
-                  placeholder="admin@exemplo.com"
-                />
+          {/* Form Side */}
+          <div className="w-full md:w-1/2 p-8 md:p-16 flex flex-col justify-center bg-white overflow-y-auto">
+            <div className="flex flex-col items-center mb-10">
+              <div className="bg-orange-600 p-4 rounded-2xl mb-4 shadow-lg shadow-orange-600/20">
+                <Lock className="w-8 h-8 text-white" />
               </div>
+              <h2 className="text-3xl font-bold text-stone-900">Acesso Restrito</h2>
+              <p className="text-stone-500 text-sm text-center mt-2">Identifique-se para acessar o painel administrativo</p>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-stone-400 uppercase tracking-widest">Senha</label>
-              <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-stone-400" />
-                <input 
-                  type="password" 
-                  required
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  className="w-full pl-12 pr-4 py-4 bg-stone-50 border border-stone-200 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none transition-all"
-                  placeholder="••••••••"
-                />
+            <form onSubmit={handleLogin} className="space-y-6">
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-stone-400 uppercase tracking-widest">Email</label>
+                <div className="relative">
+                  <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-stone-400" />
+                  <input 
+                    type="email" 
+                    required
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    className="w-full pl-12 pr-4 py-4 bg-stone-50 border border-stone-200 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none transition-all"
+                    placeholder="admin@exemplo.com"
+                  />
+                </div>
               </div>
-            </div>
 
-            {loginError && (
-              <p className="text-red-500 text-sm font-medium text-center">{loginError}</p>
-            )}
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-stone-400 uppercase tracking-widest">Senha</label>
+                <div className="relative">
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-stone-400" />
+                  <input 
+                    type="password" 
+                    required
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    className="w-full pl-12 pr-4 py-4 bg-stone-50 border border-stone-200 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none transition-all"
+                    placeholder="••••••••"
+                  />
+                </div>
+              </div>
 
-            <div className="flex flex-col gap-4 pt-2">
-              <button 
-                type="submit"
-                className="w-full bg-orange-600 text-white py-4 rounded-2xl font-bold hover:bg-orange-700 transition-all shadow-xl shadow-orange-600/20"
-              >
-                Entrar
-              </button>
-              <button 
-                type="button"
-                onClick={onExit}
-                className="w-full text-stone-500 font-bold py-2 hover:text-stone-900 transition-colors"
-              >
-                Voltar ao Site
-              </button>
-            </div>
-          </form>
+              {loginError && (
+                <p className="text-red-500 text-sm font-medium text-center">{loginError}</p>
+              )}
+
+              <div className="flex flex-col gap-4 pt-2">
+                <button 
+                  type="submit"
+                  className="w-full bg-orange-600 text-white py-4 rounded-2xl font-bold hover:bg-orange-700 transition-all shadow-xl shadow-orange-600/20"
+                >
+                  Entrar
+                </button>
+                <button 
+                  type="button"
+                  onClick={onExit}
+                  className="w-full text-stone-500 font-bold py-2 hover:text-stone-900 transition-colors"
+                >
+                  Voltar ao Site
+                </button>
+              </div>
+            </form>
+          </div>
         </motion.div>
       </div>
     );

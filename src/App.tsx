@@ -865,18 +865,6 @@ export default function App() {
         
         let roteirosData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
 
-        // Check for missing initial roteiros
-        const existingTitles = new Set(roteirosData.map(r => r.title));
-        let addedAny = false;
-
-        for (const initial of INITIAL_ROTEIROS) {
-          if (!existingTitles.has(initial.title)) {
-            const docRef = await addDoc(collection(db, 'roteiros'), initial);
-            roteirosData.push({ id: docRef.id, ...initial });
-            addedAny = true;
-          }
-        }
-
         // Sort by subtitle numerically (e.g., "Roteiro 1", "Roteiro 2")
         roteirosData.sort((a, b) => {
           const getNum = (s: string) => {
@@ -886,33 +874,7 @@ export default function App() {
           return getNum(a.subtitle) - getNum(b.subtitle);
         });
 
-        // One-time updates/cleanups
-        const finalRoteiros = roteirosData.map(data => {
-          let updatedData = { ...data };
-          let hasChanges = false;
-
-          // One-time cleanup for Cachoeira da Bica
-          if (data.places?.includes("Cachoeira da Bica") || data.images?.some((img: string) => img.includes("cachoeira-da-bica"))) {
-            updatedData.places = data.places?.filter((p: string) => p !== "Cachoeira da Bica");
-            updatedData.images = data.images?.filter((img: string) => !img.includes("cachoeira-da-bica"));
-            hasChanges = true;
-          }
-
-          // One-time update for Portal da Cidade image
-          if (data.title === "Domingos Martins e Pedra Azul" && !data.images?.includes("https://i.imgur.com/JzgCJM6.jpeg")) {
-            updatedData.images = [...(updatedData.images || []), "https://i.imgur.com/JzgCJM6.jpeg"];
-            hasChanges = true;
-          }
-
-          if (hasChanges && data.id) {
-            const { id, ...updatePayload } = updatedData;
-            updateDoc(doc(db, 'roteiros', id), updatePayload);
-            return updatedData;
-          }
-          return data;
-        });
-
-        setRoteiros(finalRoteiros);
+        setRoteiros(roteirosData);
 
         // Fetch Settings
         const settingsSnap = await getDocs(collection(db, 'settings'));
