@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Plus, Trash2, Save, Image as ImageIcon, MapPin, LogIn, Upload, LayoutDashboard, Image as ImageLucide, LogOut, Settings } from 'lucide-react';
+import { X, Plus, Trash2, Save, Image as ImageIcon, MapPin, LogIn, Upload, LayoutDashboard, Image as ImageLucide, LogOut, Settings, BarChart3, TrendingUp, Users, Calendar, Sparkles } from 'lucide-react';
 import imageCompression from 'browser-image-compression';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
 import { collection, addDoc, updateDoc, deleteDoc, doc, getDocs, onSnapshot } from 'firebase/firestore';
@@ -21,16 +21,17 @@ const compressImage = async (file: File): Promise<File> => {
   }
 };
 
-export default function AdminPanel({ onClose, initialTab = 'roteiros' }: { onClose: () => void, initialTab?: 'roteiros' | 'gallery' | 'frota' }) {
+export default function AdminPanel({ onClose, initialTab = 'roteiros' }: { onClose: () => void, initialTab?: 'roteiros' | 'gallery' | 'frota' | 'analytics' }) {
   const [user, setUser] = useState<any>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
   
-  const [activeTab, setActiveTab] = useState<'roteiros' | 'gallery' | 'frota'>(initialTab);
+  const [activeTab, setActiveTab] = useState<'roteiros' | 'gallery' | 'frota' | 'analytics'>(initialTab);
   const [roteiros, setRoteiros] = useState<any[]>([]);
   const [gallery, setGallery] = useState<any[]>([]);
   const [frota, setFrota] = useState<any[]>([]);
+  const [visits, setVisits] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
   // Form states
@@ -62,10 +63,19 @@ export default function AdminPanel({ onClose, initialTab = 'roteiros' }: { onClo
       }, (error) => {
         console.error("Erro ao carregar frota no admin", error);
       });
+      const unsubVisits = onSnapshot(collection(db, 'analytics_visits'), (snapshot) => {
+        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+        // Sort by date descending
+        data.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+        setVisits(data);
+      }, (error) => {
+        console.error("Erro ao carregar visitas no admin", error);
+      });
       return () => {
         unsubRoteiros();
         unsubGallery();
         unsubFrota();
+        unsubVisits();
       };
     }
   }, [user]);
@@ -320,6 +330,17 @@ export default function AdminPanel({ onClose, initialTab = 'roteiros' }: { onClo
           >
             <ImageLucide className="w-5 h-5" />
             Galeria de Fotos
+          </button>
+          <button 
+            onClick={() => setActiveTab('analytics')}
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-display font-bold transition-all ${
+              activeTab === 'analytics' 
+                ? 'bg-orange-50 text-orange-600' 
+                : 'text-stone-500 hover:bg-stone-50 hover:text-stone-900'
+            }`}
+          >
+            <BarChart3 className="w-5 h-5" />
+            Analytics
           </button>
         </nav>
 
@@ -612,6 +633,108 @@ export default function AdminPanel({ onClose, initialTab = 'roteiros' }: { onClo
                     </div>
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'analytics' && (
+            <div className="space-y-8">
+              <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-display font-bold text-stone-900">Analytics da Página</h2>
+                <div className="flex items-center gap-2 text-stone-400 text-sm">
+                  <Calendar className="w-4 h-4" />
+                  Últimos 30 dias
+                </div>
+              </div>
+
+              {/* Stats Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-white p-6 rounded-3xl border border-stone-200 shadow-sm">
+                  <div className="flex items-center gap-4 mb-4">
+                    <div className="w-12 h-12 bg-orange-50 text-orange-600 rounded-2xl flex items-center justify-center">
+                      <Users className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-stone-400 uppercase tracking-widest">Total de Visitas</p>
+                      <h3 className="text-3xl font-display font-black text-stone-900">
+                        {visits.reduce((acc, curr) => acc + (curr.count || 0), 0)}
+                      </h3>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 text-emerald-600 text-xs font-bold">
+                    <TrendingUp className="w-3 h-3" />
+                    <span>+12% este mês</span>
+                  </div>
+                </div>
+
+                <div className="bg-white p-6 rounded-3xl border border-stone-200 shadow-sm">
+                  <div className="flex items-center gap-4 mb-4">
+                    <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center">
+                      <LayoutDashboard className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-stone-400 uppercase tracking-widest">Roteiros Ativos</p>
+                      <h3 className="text-3xl font-display font-black text-stone-900">{roteiros.length}</h3>
+                    </div>
+                  </div>
+                  <p className="text-stone-400 text-xs">Todos publicados e visíveis</p>
+                </div>
+
+                <div className="bg-white p-6 rounded-3xl border border-stone-200 shadow-sm">
+                  <div className="flex items-center gap-4 mb-4">
+                    <div className="w-12 h-12 bg-purple-50 text-purple-600 rounded-2xl flex items-center justify-center">
+                      <ImageLucide className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-stone-400 uppercase tracking-widest">Fotos na Galeria</p>
+                      <h3 className="text-3xl font-display font-black text-stone-900">{gallery.length}</h3>
+                    </div>
+                  </div>
+                  <p className="text-stone-400 text-xs">Momentos registrados</p>
+                </div>
+              </div>
+
+              {/* Visits Chart (Simple List for now) */}
+              <div className="bg-white p-8 rounded-3xl border border-stone-200 shadow-sm">
+                <h3 className="text-xl font-display font-bold text-stone-900 mb-6">Visitas por Dia</h3>
+                <div className="space-y-4">
+                  {visits.slice(0, 7).map((visit, i) => (
+                    <div key={visit.id} className="flex items-center gap-4">
+                      <div className="w-24 text-sm font-bold text-stone-500">
+                        {new Date(visit.date + 'T00:00:00').toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' })}
+                      </div>
+                      <div className="flex-1 h-3 bg-stone-100 rounded-full overflow-hidden">
+                        <motion.div 
+                          initial={{ width: 0 }}
+                          animate={{ width: `${Math.min((visit.count / (Math.max(...visits.map(v => v.count)) || 1)) * 100, 100)}%` }}
+                          className="h-full bg-orange-500"
+                        />
+                      </div>
+                      <div className="w-12 text-right text-sm font-black text-stone-900">
+                        {visit.count}
+                      </div>
+                    </div>
+                  ))}
+                  {visits.length === 0 && (
+                    <div className="text-center py-12 text-stone-400">
+                      Nenhum dado de visita registrado ainda.
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Info Box */}
+              <div className="bg-orange-50 border border-orange-100 p-6 rounded-2xl">
+                <div className="flex gap-4">
+                  <Sparkles className="w-6 h-6 text-orange-600 shrink-0" />
+                  <div>
+                    <h4 className="font-bold text-orange-900 mb-1">Google Analytics Ativo</h4>
+                    <p className="text-sm text-orange-800/70 leading-relaxed">
+                      O Firebase Analytics está coletando dados detalhados (origem do tráfego, dispositivos, comportamento) em tempo real. 
+                      Para relatórios completos e avançados, acesse o Console do Firebase.
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           )}

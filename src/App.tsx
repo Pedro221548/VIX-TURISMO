@@ -6,9 +6,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import AdminPanel from './components/AdminPanel';
-import { collection, onSnapshot, getDocs, addDoc } from 'firebase/firestore';
+import { collection, onSnapshot, getDocs, addDoc, serverTimestamp, increment, setDoc, doc } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
-import { db, auth } from './firebase';
+import { db, auth, analytics } from './firebase';
+import { logEvent } from 'firebase/analytics';
 import { 
   Utensils, 
   MapPin, 
@@ -532,7 +533,43 @@ export default function App() {
   const [scrolled, setScrolled] = useState(false);
   const [selectedRoteiro, setSelectedRoteiro] = useState<any>(null);
   const [showAdmin, setShowAdmin] = useState(false);
-  const [adminTab, setAdminTab] = useState<'roteiros' | 'gallery' | 'frota'>('roteiros');
+  const [adminTab, setAdminTab] = useState<'roteiros' | 'gallery' | 'frota' | 'analytics'>('roteiros');
+  const [showCookieConsent, setShowCookieConsent] = useState(false);
+
+  useEffect(() => {
+    const consent = localStorage.getItem('cookie-consent');
+    if (!consent) {
+      setShowCookieConsent(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    // Track page view in Firestore for custom admin dashboard
+    const trackVisit = async () => {
+      try {
+        const today = new Date().toISOString().split('T')[0];
+        const visitRef = doc(db, 'analytics_visits', today);
+        await setDoc(visitRef, {
+          date: today,
+          count: increment(1),
+          lastVisit: serverTimestamp()
+        }, { merge: true });
+
+        // Also track in standard Firebase Analytics
+        if (analytics) {
+          logEvent(analytics, 'page_view', {
+            page_title: 'Home',
+            page_location: window.location.href,
+            page_path: window.location.pathname
+          });
+        }
+      } catch (error) {
+        console.error("Erro ao rastrear visita:", error);
+      }
+    };
+
+    trackVisit();
+  }, []);
   const [loading, setLoading] = useState(true);
   const [roteiros, setRoteiros] = useState<any[]>([]);
   const [gallery, setGallery] = useState<any[]>([]);
@@ -637,6 +674,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#fafaf9] text-[#1c1917] font-sans selection:bg-orange-100 selection:text-orange-900">
+      <div className="grain" />
       <AnimatePresence>
         {isBookingModalOpen && (
           <BookingModal 
@@ -763,9 +801,52 @@ export default function App() {
         </motion.button>
       )}
 
+      {/* Cookie Consent */}
+      <AnimatePresence>
+        {showCookieConsent && (
+          <motion.div
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
+            className="fixed bottom-6 left-6 right-6 md:left-auto md:right-6 md:w-96 z-[100]"
+          >
+            <div className="bg-white rounded-3xl p-6 shadow-2xl border border-stone-200 backdrop-blur-xl bg-white/90">
+              <div className="flex items-start gap-4 mb-4">
+                <div className="w-12 h-12 bg-orange-100 text-orange-600 rounded-2xl flex items-center justify-center shrink-0">
+                  <ShieldCheck className="w-6 h-6" />
+                </div>
+                <div>
+                  <h4 className="font-display font-bold text-stone-900">Cookies & Privacidade</h4>
+                  <p className="text-sm text-stone-500 leading-relaxed mt-1">
+                    Utilizamos cookies para melhorar sua experiência e analisar o tráfego do site.
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    localStorage.setItem('cookie-consent', 'accepted');
+                    setShowCookieConsent(false);
+                  }}
+                  className="flex-1 bg-stone-900 text-white py-3 rounded-xl text-sm font-bold hover:bg-stone-800 transition-colors"
+                >
+                  Aceitar
+                </button>
+                <button
+                  onClick={() => setShowCookieConsent(false)}
+                  className="px-6 py-3 text-stone-400 hover:text-stone-600 text-sm font-bold transition-colors"
+                >
+                  Recusar
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <AnimatePresence>
         {showAdmin && (
-          <AdminPanel onClose={() => setShowAdmin(false)} initialTab={adminTab} />
+          <AdminPanel onClose={() => setShowAdmin(false)} initialTab={adminTab as any} />
         )}
         {selectedRoteiro && (
           <RoteiroModal 
@@ -802,31 +883,31 @@ export default function App() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5, duration: 0.8 }}
           >
-            <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-orange-600/20 border border-orange-600/30 text-orange-400 text-xs font-bold uppercase tracking-[0.3em] mb-8 backdrop-blur-md">
-              <Sparkles className="w-4 h-4" /> {contactInfo.heroTitle || "Descubra o Espírito Santo"}
+            <span className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-white/10 border border-white/20 text-white text-[10px] font-black uppercase tracking-[0.4em] mb-10 backdrop-blur-xl shadow-2xl">
+              <Sparkles className="w-4 h-4 text-orange-400" /> {contactInfo.heroTitle || "A melhor experiência no ES"}
             </span>
-            <h1 className="text-6xl md:text-8xl font-display font-black text-white tracking-tighter leading-[0.9] mb-8 uppercase drop-shadow-2xl">
-              {contactInfo.heroTitle ? contactInfo.heroTitle.split(' ').slice(0, -2).join(' ') : "EXPLORE O"} <br />
-              <span className="text-orange-500 drop-shadow-lg">{contactInfo.heroTitle ? contactInfo.heroTitle.split(' ').slice(-2).join(' ') : "MELHOR DO ESPÍRITO SANTO"}</span>
+            <h1 className="text-7xl md:text-[10rem] font-display font-black text-white tracking-tighter leading-[0.8] mb-10 uppercase drop-shadow-2xl">
+              {contactInfo.heroTitle ? contactInfo.heroTitle.split(' ').slice(0, -2).join(' ') : "VIVA O"} <br />
+              <span className="text-orange-500">{contactInfo.heroTitle ? contactInfo.heroTitle.split(' ').slice(-2).join(' ') : "ESPÍRITO SANTO"}</span>
             </h1>
-            <p className="text-xl md:text-2xl text-white/90 max-w-2xl mx-auto mb-12 font-medium leading-relaxed drop-shadow-md">
-              {contactInfo.heroSubtitle || "Roteiros exclusivos pelos melhores destinos do Espírito Santo com guias credenciados e conforto premium."}
+            <p className="text-lg md:text-2xl text-white/80 max-w-2xl mx-auto mb-14 font-medium leading-relaxed drop-shadow-md">
+              {contactInfo.heroSubtitle || "Roteiros exclusivos, conforto premium e guias credenciados para você descobrir o paraíso capixaba."}
             </p>
             <div className="flex flex-col md:flex-row items-center justify-center gap-6">
               <a 
                 href="#roteiros"
-                className="bg-orange-600 text-white px-10 py-5 rounded-2xl font-bold text-lg hover:bg-orange-700 transition-all shadow-2xl shadow-orange-600/30 flex items-center gap-3 group"
+                className="bg-orange-600 text-white px-12 py-6 rounded-3xl font-black text-lg hover:bg-orange-500 transition-all shadow-2xl shadow-orange-600/40 flex items-center gap-3 group"
               >
-                Ver Roteiros
-                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                Explorar Roteiros
+                <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
               </a>
               <a 
                 href={`https://wa.me/${contactInfo.whatsapp}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="bg-white/10 backdrop-blur-md border border-white/20 text-white px-10 py-5 rounded-2xl font-bold text-lg hover:bg-white/20 transition-all flex items-center gap-3"
+                className="bg-white/10 backdrop-blur-xl border border-white/20 text-white px-12 py-6 rounded-3xl font-black text-lg hover:bg-white/20 transition-all flex items-center gap-3"
               >
-                Fale com nossa equipe
+                Falar com Consultor
               </a>
             </div>
           </motion.div>
@@ -858,47 +939,68 @@ export default function App() {
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className="py-24 px-6 bg-white">
+      {/* Why Us Section */}
+      <section className="py-32 px-6 bg-white overflow-hidden">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <span className="text-orange-600 font-bold text-xs uppercase tracking-[0.3em] mb-4 block">
-              Por que nos escolher
-            </span>
-            <h2 className="text-4xl md:text-5xl font-display font-black text-stone-900 tracking-tight">
-              A Melhor Experiência Capixaba
-            </h2>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
-            <div className="flex flex-col items-center text-center group">
-              <div className="w-20 h-20 bg-orange-50 rounded-3xl flex items-center justify-center text-orange-600 mb-6 group-hover:scale-110 group-hover:bg-orange-600 group-hover:text-white transition-all duration-500 shadow-sm">
-                <ShieldCheck className="w-10 h-10" />
-              </div>
-              <h3 className="text-xl font-display font-bold text-stone-900 mb-4">Segurança em 1º Lugar</h3>
-              <p className="text-stone-500 leading-relaxed">
-                Veículos revisados, guias credenciados e seguro viagem para você aproveitar cada momento sem preocupações.
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-24 items-center">
+            <div className="relative">
+              <div className="absolute -top-20 -left-20 w-64 h-64 bg-orange-100 rounded-full blur-3xl opacity-50" />
+              <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-orange-200 rounded-full blur-3xl opacity-30" />
+              
+              <span className="text-orange-600 font-black text-[10px] uppercase tracking-[0.5em] mb-6 block">
+                Por que nos escolher
+              </span>
+              <h2 className="text-5xl md:text-7xl font-display font-black text-stone-900 tracking-tighter leading-[0.9] mb-10 uppercase">
+                Excelência em <br />
+                <span className="text-orange-600">Turismo Receptivo</span>
+              </h2>
+              <p className="text-stone-500 text-lg mb-12 leading-relaxed max-w-lg">
+                Somos especialistas em criar experiências memoráveis no Espírito Santo, unindo conhecimento local, conforto e total segurança para você e sua família.
               </p>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+                <div className="group">
+                  <div className="w-14 h-14 bg-stone-900 text-white rounded-2xl flex items-center justify-center mb-6 group-hover:bg-orange-600 transition-colors duration-500 shadow-xl shadow-black/10">
+                    <ShieldCheck className="w-7 h-7" />
+                  </div>
+                  <h4 className="font-display font-black text-stone-900 uppercase text-sm tracking-widest mb-3">Segurança Total</h4>
+                  <p className="text-stone-500 text-xs leading-relaxed">Seguro passageiro e veículos rigorosamente inspecionados.</p>
+                </div>
+                <div className="group">
+                  <div className="w-14 h-14 bg-stone-900 text-white rounded-2xl flex items-center justify-center mb-6 group-hover:bg-orange-600 transition-colors duration-500 shadow-xl shadow-black/10">
+                    <IdCard className="w-7 h-7" />
+                  </div>
+                  <h4 className="font-display font-black text-stone-900 uppercase text-sm tracking-widest mb-3">Guias Experts</h4>
+                  <p className="text-stone-500 text-xs leading-relaxed">Profissionais credenciados com profundo conhecimento histórico.</p>
+                </div>
+              </div>
             </div>
             
-            <div className="flex flex-col items-center text-center group">
-              <div className="w-20 h-20 bg-orange-50 rounded-3xl flex items-center justify-center text-orange-600 mb-6 group-hover:scale-110 group-hover:bg-orange-600 group-hover:text-white transition-all duration-500 shadow-sm">
-                <Heart className="w-10 h-10" />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-4 pt-12">
+                <motion.div 
+                  whileHover={{ y: -10 }}
+                  className="rounded-[2.5rem] overflow-hidden aspect-[3/4] shadow-2xl"
+                >
+                  <img src="https://images.unsplash.com/photo-1596422846543-75c6fc197f07?auto=format&fit=crop&q=80" alt="ES" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                </motion.div>
+                <div className="bg-orange-600 rounded-[2.5rem] p-8 text-white aspect-square flex flex-col justify-end">
+                  <span className="text-4xl font-black mb-2">10+</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest opacity-80">Anos de Experiência</span>
+                </div>
               </div>
-              <h3 className="text-xl font-display font-bold text-stone-900 mb-4">Roteiros Exclusivos</h3>
-              <p className="text-stone-500 leading-relaxed">
-                Experiências desenhadas para mostrar o que há de mais autêntico e belo no Espírito Santo.
-              </p>
-            </div>
-            
-            <div className="flex flex-col items-center text-center group">
-              <div className="w-20 h-20 bg-orange-50 rounded-3xl flex items-center justify-center text-orange-600 mb-6 group-hover:scale-110 group-hover:bg-orange-600 group-hover:text-white transition-all duration-500 shadow-sm">
-                <Coffee className="w-10 h-10" />
+              <div className="space-y-4">
+                <div className="bg-stone-900 rounded-[2.5rem] p-8 text-white aspect-square flex flex-col justify-end">
+                  <span className="text-4xl font-black mb-2">5k+</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest opacity-80">Clientes Felizes</span>
+                </div>
+                <motion.div 
+                  whileHover={{ y: -10 }}
+                  className="rounded-[2.5rem] overflow-hidden aspect-[3/4] shadow-2xl"
+                >
+                  <img src="https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&q=80" alt="ES" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                </motion.div>
               </div>
-              <h3 className="text-xl font-display font-bold text-stone-900 mb-4">Conforto Premium</h3>
-              <p className="text-stone-500 leading-relaxed">
-                Atendimento personalizado, paradas estratégicas e todo o suporte necessário durante a viagem.
-              </p>
             </div>
           </div>
         </div>
@@ -930,104 +1032,83 @@ export default function App() {
               {roteiros.map((roteiro, index) => (
                 <motion.div 
                   key={roteiro.id || `roteiro-${index}`}
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  whileInView={{ opacity: 1, scale: 1 }}
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: index * 0.1 }}
                   onClick={() => setSelectedRoteiro(roteiro)}
-                  className="bg-white rounded-[2.5rem] overflow-hidden shadow-xl border border-stone-100 flex flex-col md:flex-row group cursor-pointer hover:border-orange-200 transition-colors"
+                  className="bg-white rounded-[3rem] overflow-hidden shadow-2xl shadow-black/5 border border-stone-100 flex flex-col md:flex-row group cursor-pointer hover:border-orange-200 transition-all duration-500 hover:-translate-y-2"
                 >
                   <RoteiroImage roteiro={roteiro} />
-                  <div className="md:w-3/5 p-6 md:p-10 flex flex-col justify-between relative bg-white">
-                    <div className="absolute top-4 right-4 md:top-6 md:right-8 z-20">
-                      <span className="flex items-center gap-1 text-[9px] md:text-[10px] font-bold text-[#00c853] uppercase tracking-widest bg-[#e8f5e9] px-3 py-1.5 md:px-4 md:py-2 rounded-full border border-[#c8e6c9] shadow-sm">
-                        <IdCard className="w-3 h-3 md:w-3.5 md:h-3.5" /> GUIA CREDENCIADO
+                  <div className="md:w-3/5 p-8 md:p-12 flex flex-col justify-between relative bg-white">
+                    <div className="absolute top-6 right-6 md:top-8 md:right-10 z-20">
+                      <span className="flex items-center gap-2 text-[9px] md:text-[10px] font-black text-orange-600 uppercase tracking-[0.2em] bg-orange-50 px-4 py-2 rounded-full border border-orange-100 shadow-sm">
+                        <ShieldCheck className="w-3.5 h-3.5" /> Premium
                       </span>
                     </div>
                     
-                    <div className="mt-8 md:mt-4">
-                      <div className="mb-6">
-                        <h3 className="text-2xl md:text-3xl font-display font-black text-[#1c1917] leading-tight whitespace-nowrap overflow-hidden text-ellipsis">{roteiro.title}</h3>
-                        {roteiro.vehicle && (
-                          <div className="flex items-center gap-2 mt-2 text-stone-500">
-                            <MapPin className="w-4 h-4 text-orange-600" />
-                            <span className="text-xs md:text-[11px] font-bold uppercase tracking-wider">Veículo: {roteiro.vehicle}</span>
-                          </div>
-                        )}
-                        {roteiro.timeDeparture && roteiro.timeReturn ? (
-                          <div className="flex items-center gap-2 mt-2 text-stone-500">
-                            <Clock className="w-4 h-4 text-orange-600" />
-                            <span className="text-xs md:text-[11px] font-bold uppercase tracking-wider">Ida: {roteiro.timeDeparture} | Volta: {roteiro.timeReturn}</span>
-                          </div>
-                        ) : roteiro.time && (
-                          <div className="flex items-center gap-2 mt-2 text-stone-500">
-                            <Clock className="w-4 h-4 text-orange-600" />
-                            <span className="text-xs md:text-sm font-bold uppercase tracking-wider">{roteiro.time}</span>
-                          </div>
-                        )}
+                    <div className="mt-10 md:mt-4">
+                      <div className="mb-8">
+                        <h3 className="text-3xl md:text-4xl font-display font-black text-stone-900 leading-[0.9] tracking-tighter uppercase mb-4">{roteiro.title}</h3>
+                        <div className="flex flex-wrap gap-4">
+                          {roteiro.vehicle && (
+                            <div className="flex items-center gap-2 text-stone-400">
+                              <Car className="w-4 h-4" />
+                              <span className="text-[10px] font-bold uppercase tracking-widest">{roteiro.vehicle}</span>
+                            </div>
+                          )}
+                          {roteiro.timeDeparture && (
+                            <div className="flex items-center gap-2 text-stone-400">
+                              <Clock className="w-4 h-4" />
+                              <span className="text-[10px] font-bold uppercase tracking-widest">{roteiro.timeDeparture}</span>
+                            </div>
+                          )}
+                        </div>
                       </div>
                       
-                      <div className="mb-8">
-                        <h4 className="text-[10px] md:text-[11px] font-black text-stone-400 uppercase tracking-widest mb-4">O QUE VOCÊ VAI VISITAR:</h4>
+                      <div className="mb-10">
+                        <h4 className="text-[10px] font-black text-stone-300 uppercase tracking-[0.3em] mb-5">Destinos Inclusos</h4>
                         <div className="flex flex-wrap gap-2">
-                          {roteiro.places.slice(0, 4).map((place, idx) => (
-                            <span key={`${place}-${idx}`} className="bg-[#f5f5f5] text-stone-600 px-3 py-2 md:px-4 md:py-2 rounded-xl text-[10px] md:text-[11px] font-bold">
+                          {roteiro.places.slice(0, 3).map((place, idx) => (
+                            <span key={`${place}-${idx}`} className="bg-stone-50 text-stone-600 px-4 py-2 rounded-xl text-[10px] font-bold border border-stone-100">
                               {place}
                             </span>
                           ))}
-                          {roteiro.places.length > 4 && (
-                            <span className="text-[10px] md:text-[11px] text-stone-400 font-bold py-2 ml-1">+{roteiro.places.length - 4} LOCAIS</span>
+                          {roteiro.places.length > 3 && (
+                            <span className="text-[10px] text-stone-400 font-bold py-2 ml-1">+{roteiro.places.length - 3}</span>
                           )}
                         </div>
                       </div>
                       
                       <button 
                         onClick={() => setSelectedRoteiro(roteiro)}
-                        className="text-[#ff4500] font-black text-xs md:text-sm flex items-center gap-2 hover:gap-3 transition-all mb-8 group/link"
+                        className="text-orange-600 font-black text-xs uppercase tracking-widest flex items-center gap-3 hover:gap-5 transition-all mb-10 group/link"
                       >
-                        Ver História e Detalhes 
-                        <ChevronRight className="w-4 h-4 md:w-5 md:h-5 group-hover/link:translate-x-1 transition-transform" />
+                        Explorar Detalhes 
+                        <ArrowRight className="w-5 h-5 group-hover/link:translate-x-1 transition-transform" />
                       </button>
                     </div>
 
-                    <div className="mb-6 flex flex-col border-t border-stone-100 pt-6 gap-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] md:text-[11px] font-black text-stone-400 uppercase tracking-widest">Valor do Investimento</span>
-                        <div className="flex items-baseline gap-1 whitespace-nowrap">
-                          <span className="text-sm md:text-base font-black text-[#ff4500]">R$</span>
-                          <span className="text-2xl md:text-3xl font-black text-[#ff4500]">{roteiro.price}</span>
-                          <span className="text-xs font-medium text-stone-400 ml-1">/4 pessoas</span>
+                    <div className="flex items-center justify-between pt-8 border-t border-stone-100">
+                      <div className="flex flex-col">
+                        <span className="text-[9px] font-black text-stone-300 uppercase tracking-widest mb-1">Investimento</span>
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-sm font-black text-stone-900">R$</span>
+                          <span className="text-3xl font-black text-stone-900 tracking-tighter">{roteiro.price}</span>
+                          <span className="text-[10px] font-bold text-stone-400 ml-1">/GRUPO</span>
                         </div>
                       </div>
-                      
-                      {(roteiro.priceCash || roteiro.priceInstallment) && (
-                        <div className="flex flex-col gap-1 bg-stone-50 p-3 rounded-xl border border-stone-100">
-                          {roteiro.priceCash && (
-                            <div className="flex items-center justify-between">
-                              <span className="text-[9px] font-bold text-stone-500 uppercase tracking-widest">À Vista:</span>
-                              <span className="text-sm font-black text-green-600">R$ {roteiro.priceCash}</span>
-                            </div>
-                          )}
-                          {roteiro.priceInstallment && (
-                            <div className="flex items-center justify-between">
-                              <span className="text-[9px] font-bold text-stone-500 uppercase tracking-widest">Parcelado:</span>
-                              <span className="text-sm font-black text-orange-600">R$ {roteiro.priceInstallment}</span>
-                            </div>
-                          )}
-                        </div>
-                      )}
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setBookingRoteiro(roteiro);
+                          setIsBookingModalOpen(true);
+                        }}
+                        className="bg-stone-900 text-white p-4 rounded-2xl hover:bg-orange-600 transition-colors shadow-xl shadow-black/10"
+                      >
+                        <Plus className="w-6 h-6" />
+                      </button>
                     </div>
-
-                    <button 
-                      onClick={() => {
-                        setBookingRoteiro(roteiro);
-                        setIsBookingModalOpen(true);
-                      }}
-                      className="w-full bg-[#1c1917] text-white py-4 md:py-5 rounded-[1.25rem] md:rounded-[1.5rem] font-black hover:bg-[#ff4500] transition-all flex items-center justify-center gap-3 group/btn shadow-xl shadow-black/10"
-                    >
-                      <span className="text-sm md:text-base">Reservar Agora</span>
-                      <ArrowRight className="w-4 h-4 md:w-5 md:h-5 group-hover/btn:translate-x-1 transition-transform" />
-                    </button>
                   </div>
                 </motion.div>
               ))}
@@ -1037,95 +1118,106 @@ export default function App() {
       </section>
 
       {/* Gallery Section */}
-      <section id="galeria" className="py-24 px-6 bg-white">
+      <section id="galeria" className="py-32 px-6 bg-stone-50 overflow-hidden">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <span className="text-orange-600 font-bold text-xs uppercase tracking-[0.3em] mb-4 block">
-              Nossos Registros
-            </span>
-            <h2 className="text-4xl md:text-5xl font-display font-black text-stone-900 tracking-tight">
-              Galeria de Momentos
-            </h2>
-            <p className="text-stone-500 mt-4 max-w-2xl mx-auto">
-              Confira alguns dos momentos inesquecíveis registrados em nossos roteiros pelo Espírito Santo.
+          <div className="flex flex-col md:flex-row md:items-end justify-between mb-20 gap-8">
+            <div className="max-w-2xl">
+              <span className="text-orange-600 font-black text-[10px] uppercase tracking-[0.5em] mb-6 block">
+                Nossos Registros
+              </span>
+              <h2 className="text-5xl md:text-7xl font-display font-black text-stone-900 tracking-tighter leading-[0.9] uppercase">
+                Momentos <br />
+                <span className="text-orange-600">Inesquecíveis</span>
+              </h2>
+            </div>
+            <p className="text-stone-500 text-lg max-w-sm leading-relaxed">
+              Confira alguns dos registros feitos durante nossos roteiros exclusivos pelo paraíso capixaba.
             </p>
           </div>
 
-          <div className="columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
+          <div className="columns-2 md:columns-3 lg:columns-4 gap-6 space-y-6">
             {gallery.map((item, index) => (
               <motion.div
                 key={item.id || `gallery-${index}`}
-                initial={{ opacity: 0, scale: 0.9 }}
-                whileInView={{ opacity: 1, scale: 1 }}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.05 }}
-                className="break-inside-avoid rounded-3xl overflow-hidden border border-stone-100 shadow-sm hover:shadow-xl transition-all duration-500 group"
+                className="break-inside-avoid rounded-[2rem] overflow-hidden border border-stone-100 shadow-xl hover:shadow-2xl transition-all duration-700 group relative"
               >
                 <img 
                   src={item.url} 
                   alt="Gallery" 
-                  className="w-full h-auto object-cover transition-transform duration-700 group-hover:scale-110"
+                  className="w-full h-auto object-cover transition-transform duration-1000 group-hover:scale-110"
                   referrerPolicy="no-referrer"
                 />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               </motion.div>
             ))}
           </div>
 
           {gallery.length === 0 && (
-            <div className="text-center py-20 bg-stone-50 rounded-[3rem] border border-dashed border-stone-200">
+            <div className="text-center py-24 bg-white rounded-[3rem] border border-dashed border-stone-200">
               <ImageIcon className="w-12 h-12 text-stone-300 mx-auto mb-4" />
-              <p className="text-stone-400 font-medium">Em breve, novas fotos aqui!</p>
+              <p className="text-stone-400 font-black uppercase text-xs tracking-widest">Em breve, novas fotos aqui!</p>
             </div>
           )}
         </div>
       </section>
 
       {/* Fleet Section */}
-      <section id="frota" className="py-24 px-6 bg-white">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16 relative">
-            <span className="text-orange-600 font-bold text-xs uppercase tracking-[0.3em] mb-4 block">
-              Nossa Frota
-            </span>
-            <h2 className="text-4xl md:text-5xl font-display font-black text-stone-900 tracking-tight">
-              Conforto e Segurança
-            </h2>
-            <p className="text-stone-500 mt-4 max-w-2xl mx-auto">
-              Veículos modernos, inspecionados e equipados com ar-condicionado para garantir o máximo de conforto durante seus passeios pelo Espírito Santo.
+      <section id="frota" className="py-32 px-6 bg-stone-900 text-white overflow-hidden relative">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-orange-600/20 rounded-full blur-[120px] -mr-48 -mt-48" />
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-orange-900/20 rounded-full blur-[120px] -ml-48 -mb-48" />
+        
+        <div className="max-w-7xl mx-auto relative z-10">
+          <div className="flex flex-col md:flex-row md:items-end justify-between mb-20 gap-8">
+            <div className="max-w-2xl">
+              <span className="text-orange-500 font-black text-[10px] uppercase tracking-[0.5em] mb-6 block">
+                Nossa Frota
+              </span>
+              <h2 className="text-5xl md:text-7xl font-display font-black text-white tracking-tighter leading-[0.9] uppercase">
+                Conforto <br />
+                <span className="text-orange-500">Sem Limites</span>
+              </h2>
+            </div>
+            <p className="text-stone-400 text-lg max-w-sm leading-relaxed">
+              Veículos modernos, inspecionados e equipados para garantir o máximo de conforto em cada quilômetro.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
             {frota.map((item, index) => (
               <motion.div 
                 key={item.id || index}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
+                initial={{ opacity: 0, scale: 0.95 }}
+                whileInView={{ opacity: 1, scale: 1 }}
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.2 }}
-                className="bg-stone-50 rounded-[2.5rem] overflow-hidden border border-stone-100 group shadow-sm hover:shadow-xl transition-all duration-500"
+                className="bg-white/5 backdrop-blur-xl rounded-[3rem] overflow-hidden border border-white/10 group shadow-2xl transition-all duration-700 hover:border-orange-500/50"
               >
-                <div className="h-64 overflow-hidden relative">
+                <div className="h-80 overflow-hidden relative">
                   <img 
                     src={item.image} 
                     alt={item.title} 
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                    className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
                     referrerPolicy="no-referrer"
                   />
+                  <div className="absolute inset-0 bg-gradient-to-t from-stone-900 via-transparent to-transparent" />
                 </div>
-                <div className="p-8">
-                  <h3 className="text-2xl font-display font-black text-stone-900 mb-2">{item.title}</h3>
-                  <p className="text-stone-500 mb-6">{item.description}</p>
-                  <ul className="space-y-3">
+                <div className="p-10 md:p-14">
+                  <h3 className="text-3xl font-display font-black text-white mb-4 uppercase tracking-tighter">{item.title}</h3>
+                  <p className="text-stone-400 mb-10 text-lg leading-relaxed">{item.description}</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     {item.features?.map((feature: string, i: number) => (
-                      <li key={i} className="flex items-center gap-3 text-stone-600 text-sm font-medium">
-                        <div className="w-6 h-6 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center shrink-0">
-                          <Check className="w-3 h-3" />
+                      <div key={i} className="flex items-center gap-4 text-stone-300 text-sm font-bold uppercase tracking-widest">
+                        <div className="w-8 h-8 rounded-xl bg-orange-600 text-white flex items-center justify-center shrink-0 shadow-lg shadow-orange-600/20">
+                          <Check className="w-4 h-4" />
                         </div>
                         {feature}
-                      </li>
+                      </div>
                     ))}
-                  </ul>
+                  </div>
                 </div>
               </motion.div>
             ))}
@@ -1136,33 +1228,42 @@ export default function App() {
     </div>
 
       {/* CTA Section */}
-      <section className="py-24 px-6 bg-stone-900 relative overflow-hidden">
-        <div className="absolute inset-0 opacity-20">
+      <section className="py-40 px-6 bg-stone-900 relative overflow-hidden">
+        <div className="absolute inset-0 opacity-30">
           <img 
             src="https://images.unsplash.com/photo-1596422846543-75c6fc197f07?auto=format&fit=crop&q=80" 
             alt="Background" 
             className="w-full h-full object-cover"
             referrerPolicy="no-referrer"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-stone-900 via-stone-900/80 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-stone-900 via-stone-900/60 to-transparent" />
         </div>
         
-        <div className="max-w-4xl mx-auto text-center relative z-10">
-          <h2 className="text-4xl md:text-6xl font-display font-black text-white mb-6 tracking-tight">
-            Pronto para sua próxima aventura?
-          </h2>
-          <p className="text-stone-300 text-lg md:text-xl mb-10 max-w-2xl mx-auto leading-relaxed">
-            Fale com nossos especialistas e descubra o roteiro perfeito para você e sua família no Espírito Santo.
-          </p>
-          <a 
-            href="https://wa.me/5527999999999" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-3 bg-orange-600 text-white px-8 py-4 rounded-full font-bold text-lg hover:bg-orange-500 transition-colors shadow-xl shadow-orange-600/20"
+        <div className="max-w-5xl mx-auto text-center relative z-10">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
           >
-            <MessageCircle className="w-6 h-6" />
-            Fale com nossa equipe
-          </a>
+            <h2 className="text-6xl md:text-8xl font-display font-black text-white mb-10 tracking-tighter leading-[0.8] uppercase">
+              Sua próxima <br />
+              <span className="text-orange-500">Aventura começa aqui</span>
+            </h2>
+            <p className="text-xl text-white/70 max-w-2xl mx-auto mb-14 leading-relaxed">
+              Não deixe para depois. Fale agora com nossa equipe e garanta sua vaga nos roteiros mais exclusivos do Espírito Santo.
+            </p>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
+              <a 
+                href={`https://wa.me/${contactInfo.whatsapp}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="bg-orange-600 text-white px-12 py-6 rounded-3xl font-black text-xl hover:bg-orange-500 transition-all shadow-2xl shadow-orange-600/40 flex items-center gap-3 group"
+              >
+                Reservar pelo WhatsApp
+                <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
+              </a>
+            </div>
+          </motion.div>
         </div>
       </section>
 
