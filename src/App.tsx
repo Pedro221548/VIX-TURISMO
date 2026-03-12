@@ -6,6 +6,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import AdminPanel from './components/AdminPanel';
+import { collection, onSnapshot, getDocs, addDoc } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
+import { db, auth } from './firebase';
 import { 
   Utensils, 
   MapPin, 
@@ -24,7 +27,12 @@ import {
   Facebook,
   Twitter,
   IdCard,
-  Sparkles
+  Sparkles,
+  Settings,
+  ShieldCheck,
+  Heart,
+  Coffee,
+  Check
 } from 'lucide-react';
 
 const INITIAL_ROTEIROS = [
@@ -141,6 +149,21 @@ const INITIAL_ROTEIROS = [
   }
 ];
 
+const INITIAL_FROTA = [
+  {
+    title: "Vans Executivas",
+    description: "Ideais para grupos e famílias, oferecendo amplo espaço, poltronas reclináveis e ambiente climatizado.",
+    image: "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&q=80",
+    features: ['Ar-condicionado', 'Bancos reclináveis', 'Wi-Fi a bordo', 'Seguro passageiro']
+  },
+  {
+    title: "Carros Executivos",
+    description: "Perfeitos para casais ou viagens de negócios, garantindo privacidade, agilidade e muito conforto.",
+    image: "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&q=80",
+    features: ['Ar-condicionado', 'Bancos em couro', 'Água cortesia', 'Seguro passageiro']
+  }
+];
+
 function FadeInImage({ src, alt, className, loading = "lazy" }: { src: string, alt: string, className?: string, loading?: "lazy" | "eager" }) {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
@@ -197,7 +220,7 @@ function RoteiroModal({ roteiro, onClose, contactInfo, onDownload }: { roteiro: 
             <span className="bg-orange-600 text-white px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest mb-2 inline-block">
               {roteiro.subtitle}
             </span>
-            <h2 className="text-3xl md:text-4xl font-bold text-stone-900">{roteiro.title}</h2>
+            <h2 className="text-3xl md:text-4xl font-display font-black text-stone-900">{roteiro.title}</h2>
             {roteiro.timeDeparture && roteiro.timeReturn ? (
               <div className="flex items-center gap-2 mt-2 text-stone-500">
                 <Clock className="w-4 h-4 text-orange-600" />
@@ -291,10 +314,13 @@ function RoteiroModal({ roteiro, onClose, contactInfo, onDownload }: { roteiro: 
             <div className="flex flex-col gap-2">
               <div>
                 <span className="text-xs text-stone-400 block uppercase font-bold tracking-widest mb-1">Investimento Geral</span>
-                <span className="text-3xl font-bold text-orange-600">R$ {roteiro.price}</span>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-3xl font-bold text-orange-600">R$ {roteiro.price}</span>
+                  <span className="text-sm font-medium text-stone-400">/pessoa</span>
+                </div>
               </div>
               {(roteiro.priceCash || roteiro.priceInstallment) && (
-                <div className="flex gap-4 bg-stone-50 p-3 rounded-xl border border-stone-100">
+                <div className="flex gap-4 bg-stone-50 p-3 rounded-xl border border-stone-100 mt-1">
                   {roteiro.priceCash && (
                     <div>
                       <span className="text-[9px] font-bold text-stone-400 uppercase block">À Vista</span>
@@ -437,7 +463,7 @@ Desde já, agradeço pela atenção.`;
           <div className="w-12 h-12 bg-orange-100 rounded-2xl flex items-center justify-center text-orange-600 mb-6">
             <Clock className="w-6 h-6" />
           </div>
-          <h2 className="text-2xl font-bold text-stone-900 mb-2">Solicitar Reserva</h2>
+          <h2 className="text-2xl font-display font-bold text-stone-900 mb-2">Solicitar Reserva</h2>
           <p className="text-stone-500 text-sm">Preencha os dados abaixo para iniciarmos seu atendimento via WhatsApp.</p>
         </div>
 
@@ -482,10 +508,11 @@ export default function App() {
   const [scrolled, setScrolled] = useState(false);
   const [selectedRoteiro, setSelectedRoteiro] = useState<any>(null);
   const [showAdmin, setShowAdmin] = useState(false);
-  const [adminTab, setAdminTab] = useState<'roteiros' | 'gallery'>('roteiros');
+  const [adminTab, setAdminTab] = useState<'roteiros' | 'gallery' | 'frota'>('roteiros');
   const [loading, setLoading] = useState(true);
   const [roteiros, setRoteiros] = useState<any[]>([]);
   const [gallery, setGallery] = useState<any[]>([]);
+  const [frota, setFrota] = useState<any[]>(INITIAL_FROTA);
   const [contactInfo, setContactInfo] = useState<any>({
     phone: '5527998597568',
     whatsapp: '5527998597568',
@@ -513,6 +540,14 @@ export default function App() {
   };
 
   const [isAuth, setIsAuth] = useState(false);
+  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
+
+  useEffect(() => {
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      setIsAdminLoggedIn(!!user);
+    });
+    return () => unsubscribeAuth();
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -525,30 +560,44 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [rotRes, galRes] = await Promise.all([
-          fetch('/api/roteiros'),
-          fetch('/api/gallery')
-        ]);
-        if (rotRes.ok) {
-          const rotData = await rotRes.json();
-          setRoteiros(rotData);
-        } else {
-          setRoteiros(INITIAL_ROTEIROS);
-        }
-        if (galRes.ok) {
-          const galData = await galRes.json();
-          setGallery(galData);
-        }
-      } catch (error) {
-        console.error("Erro ao carregar dados", error);
+    const unsubscribeRoteiros = onSnapshot(collection(db, 'roteiros'), (snapshot) => {
+      if (snapshot.empty) {
         setRoteiros(INITIAL_ROTEIROS);
-      } finally {
-        setLoading(false);
+      } else {
+        const rotData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setRoteiros(rotData);
       }
+      setLoading(false);
+    }, (error) => {
+      console.error("Erro ao carregar roteiros", error.message);
+      setRoteiros(INITIAL_ROTEIROS);
+      setLoading(false);
+    });
+
+    const unsubscribeGallery = onSnapshot(collection(db, 'gallery'), (snapshot) => {
+      const galData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setGallery(galData);
+    }, (error) => {
+      console.error("Erro ao carregar galeria", error.message);
+    });
+
+    const unsubscribeFrota = onSnapshot(collection(db, 'frota'), (snapshot) => {
+      if (snapshot.empty) {
+        setFrota(INITIAL_FROTA);
+      } else {
+        const frotaData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setFrota(frotaData);
+      }
+    }, (error) => {
+      console.error("Erro ao carregar frota", error.message);
+      setFrota(INITIAL_FROTA);
+    });
+
+    return () => {
+      unsubscribeRoteiros();
+      unsubscribeGallery();
+      unsubscribeFrota();
     };
-    fetchData();
   }, []);
 
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
@@ -603,14 +652,14 @@ export default function App() {
               className="h-14 w-auto object-contain"
               referrerPolicy="no-referrer"
             />
-            <span className={`font-bold text-xl tracking-tight ${scrolled ? 'text-stone-900' : 'text-white'}`}>
+            <span className={`font-display font-black text-xl tracking-tight ${scrolled ? 'text-stone-900' : 'text-white'}`}>
               VIX ES TURISMO
             </span>
           </div>
 
           {/* Desktop Nav */}
           <div className="hidden md:flex items-center gap-8">
-            {['Roteiros', 'Galeria'].map((item) => (
+            {['Roteiros', 'Frota', 'Galeria'].map((item) => (
               <a 
                 key={item} 
                 href={`#${item.toLowerCase()}`} 
@@ -654,7 +703,7 @@ export default function App() {
             className="fixed inset-0 z-40 bg-white pt-24 px-6 md:hidden"
           >
             <div className="flex flex-col gap-6">
-              {['Roteiros', 'Galeria'].map((item) => (
+              {['Roteiros', 'Frota', 'Galeria'].map((item) => (
                 <a 
                   key={item} 
                   href={`#${item.toLowerCase()}`} 
@@ -677,14 +726,22 @@ export default function App() {
         )}
       </AnimatePresence>
 
+      {/* Floating Admin Button when logged in */}
+      {isAdminLoggedIn && !showAdmin && (
+        <motion.button
+          initial={{ scale: 0, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          onClick={() => setShowAdmin(true)}
+          className="fixed bottom-24 right-6 z-[90] bg-stone-900 text-white p-4 rounded-full shadow-2xl hover:bg-stone-800 transition-transform hover:scale-110 flex items-center justify-center group"
+          title="Abrir Painel Administrativo"
+        >
+          <Settings className="w-6 h-6 group-hover:rotate-90 transition-transform duration-300" />
+        </motion.button>
+      )}
+
       <AnimatePresence>
         {showAdmin && (
-          <AdminPanel onClose={() => {
-            setShowAdmin(false);
-            // Recarregar dados ao fechar o admin
-            fetch('/api/roteiros').then(r => r.json()).then(setRoteiros).catch(() => {});
-            fetch('/api/gallery').then(r => r.json()).then(setGallery).catch(() => {});
-          }} initialTab={adminTab} />
+          <AdminPanel onClose={() => setShowAdmin(false)} initialTab={adminTab} />
         )}
         {selectedRoteiro && (
           <RoteiroModal 
@@ -724,11 +781,11 @@ export default function App() {
             <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-orange-600/20 border border-orange-600/30 text-orange-400 text-xs font-bold uppercase tracking-[0.3em] mb-8 backdrop-blur-md">
               <Sparkles className="w-4 h-4" /> {contactInfo.heroTitle || "Descubra o Espírito Santo"}
             </span>
-            <h1 className="text-6xl md:text-8xl font-black text-white tracking-tighter leading-[0.9] mb-8 uppercase">
+            <h1 className="text-6xl md:text-8xl font-display font-black text-white tracking-tighter leading-[0.9] mb-8 uppercase drop-shadow-2xl">
               {contactInfo.heroTitle ? contactInfo.heroTitle.split(' ').slice(0, -2).join(' ') : "EXPLORE O"} <br />
-              <span className="text-orange-600">{contactInfo.heroTitle ? contactInfo.heroTitle.split(' ').slice(-2).join(' ') : "MELHOR DO ESPÍRITO SANTO"}</span>
+              <span className="text-orange-500 drop-shadow-lg">{contactInfo.heroTitle ? contactInfo.heroTitle.split(' ').slice(-2).join(' ') : "MELHOR DO ESPÍRITO SANTO"}</span>
             </h1>
-            <p className="text-xl md:text-2xl text-white/80 max-w-2xl mx-auto mb-12 font-medium leading-relaxed">
+            <p className="text-xl md:text-2xl text-white/90 max-w-2xl mx-auto mb-12 font-medium leading-relaxed drop-shadow-md">
               {contactInfo.heroSubtitle || "Roteiros exclusivos pelos melhores destinos do Espírito Santo com guias credenciados e conforto premium."}
             </p>
             <div className="flex flex-col md:flex-row items-center justify-center gap-6">
@@ -745,7 +802,7 @@ export default function App() {
                 rel="noopener noreferrer"
                 className="bg-white/10 backdrop-blur-md border border-white/20 text-white px-10 py-5 rounded-2xl font-bold text-lg hover:bg-white/20 transition-all flex items-center gap-3"
               >
-                Falar com Especialista
+                Fale com nossa equipe
               </a>
             </div>
           </motion.div>
@@ -771,8 +828,54 @@ export default function App() {
             <IdCard className="w-6 h-6" />
           </div>
           <div>
-            <h3 className="font-bold text-lg">Viagem Segura com Guia Credenciado</h3>
+            <h3 className="font-display font-bold text-lg">Viagem Segura com Guia Credenciado</h3>
             <p className="text-orange-100 text-sm">Sua segurança é nossa prioridade. Todos os nossos roteiros são acompanhados por guias profissionais registrados no CADASTUR.</p>
+          </div>
+        </div>
+      </section>
+
+      {/* Features Section */}
+      <section className="py-24 px-6 bg-white">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <span className="text-orange-600 font-bold text-xs uppercase tracking-[0.3em] mb-4 block">
+              Por que nos escolher
+            </span>
+            <h2 className="text-4xl md:text-5xl font-display font-black text-stone-900 tracking-tight">
+              A Melhor Experiência Capixaba
+            </h2>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+            <div className="flex flex-col items-center text-center group">
+              <div className="w-20 h-20 bg-orange-50 rounded-3xl flex items-center justify-center text-orange-600 mb-6 group-hover:scale-110 group-hover:bg-orange-600 group-hover:text-white transition-all duration-500 shadow-sm">
+                <ShieldCheck className="w-10 h-10" />
+              </div>
+              <h3 className="text-xl font-display font-bold text-stone-900 mb-4">Segurança em 1º Lugar</h3>
+              <p className="text-stone-500 leading-relaxed">
+                Veículos revisados, guias credenciados e seguro viagem para você aproveitar cada momento sem preocupações.
+              </p>
+            </div>
+            
+            <div className="flex flex-col items-center text-center group">
+              <div className="w-20 h-20 bg-orange-50 rounded-3xl flex items-center justify-center text-orange-600 mb-6 group-hover:scale-110 group-hover:bg-orange-600 group-hover:text-white transition-all duration-500 shadow-sm">
+                <Heart className="w-10 h-10" />
+              </div>
+              <h3 className="text-xl font-display font-bold text-stone-900 mb-4">Roteiros Exclusivos</h3>
+              <p className="text-stone-500 leading-relaxed">
+                Experiências desenhadas para mostrar o que há de mais autêntico e belo no Espírito Santo.
+              </p>
+            </div>
+            
+            <div className="flex flex-col items-center text-center group">
+              <div className="w-20 h-20 bg-orange-50 rounded-3xl flex items-center justify-center text-orange-600 mb-6 group-hover:scale-110 group-hover:bg-orange-600 group-hover:text-white transition-all duration-500 shadow-sm">
+                <Coffee className="w-10 h-10" />
+              </div>
+              <h3 className="text-xl font-display font-bold text-stone-900 mb-4">Conforto Premium</h3>
+              <p className="text-stone-500 leading-relaxed">
+                Atendimento personalizado, paradas estratégicas e todo o suporte necessário durante a viagem.
+              </p>
+            </div>
           </div>
         </div>
       </section>
@@ -784,7 +887,7 @@ export default function App() {
             <span className="text-orange-600 font-bold text-xs uppercase tracking-[0.3em] mb-4 block">
               Planeje sua Aventura
             </span>
-            <h2 className="text-4xl md:text-5xl font-bold text-stone-900 tracking-tight">
+            <h2 className="text-4xl md:text-5xl font-display font-black text-stone-900 tracking-tight">
               Roteiros Exclusivos
             </h2>
             <p className="text-stone-500 mt-4 max-w-2xl mx-auto">
@@ -820,7 +923,7 @@ export default function App() {
                     
                     <div className="mt-8 md:mt-4">
                       <div className="mb-6">
-                        <h3 className="text-2xl md:text-3xl font-bold text-[#1c1917] leading-tight whitespace-nowrap overflow-hidden text-ellipsis">{roteiro.title}</h3>
+                        <h3 className="text-2xl md:text-3xl font-display font-black text-[#1c1917] leading-tight whitespace-nowrap overflow-hidden text-ellipsis">{roteiro.title}</h3>
                         {roteiro.timeDeparture && roteiro.timeReturn ? (
                           <div className="flex items-center gap-2 mt-2 text-stone-500">
                             <Clock className="w-4 h-4 text-orange-600" />
@@ -863,6 +966,7 @@ export default function App() {
                         <div className="flex items-baseline gap-1 whitespace-nowrap">
                           <span className="text-sm md:text-base font-black text-[#ff4500]">R$</span>
                           <span className="text-2xl md:text-3xl font-black text-[#ff4500]">{roteiro.price}</span>
+                          <span className="text-xs font-medium text-stone-400 ml-1">/pessoa</span>
                         </div>
                       </div>
                       
@@ -902,6 +1006,59 @@ export default function App() {
         </div>
       </section>
 
+      {/* Fleet Section */}
+      <section id="frota" className="py-24 px-6 bg-white">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16 relative">
+            <span className="text-orange-600 font-bold text-xs uppercase tracking-[0.3em] mb-4 block">
+              Nossa Frota
+            </span>
+            <h2 className="text-4xl md:text-5xl font-display font-black text-stone-900 tracking-tight">
+              Conforto e Segurança
+            </h2>
+            <p className="text-stone-500 mt-4 max-w-2xl mx-auto">
+              Veículos modernos, inspecionados e equipados com ar-condicionado para garantir o máximo de conforto durante seus passeios pelo Espírito Santo.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {frota.map((item, index) => (
+              <motion.div 
+                key={item.id || index}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: index * 0.2 }}
+                className="bg-stone-50 rounded-[2.5rem] overflow-hidden border border-stone-100 group shadow-sm hover:shadow-xl transition-all duration-500"
+              >
+                <div className="h-64 overflow-hidden relative">
+                  <img 
+                    src={item.image} 
+                    alt={item.title} 
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                    referrerPolicy="no-referrer"
+                  />
+                </div>
+                <div className="p-8">
+                  <h3 className="text-2xl font-display font-black text-stone-900 mb-2">{item.title}</h3>
+                  <p className="text-stone-500 mb-6">{item.description}</p>
+                  <ul className="space-y-3">
+                    {item.features?.map((feature: string, i: number) => (
+                      <li key={i} className="flex items-center gap-3 text-stone-600 text-sm font-medium">
+                        <div className="w-6 h-6 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center shrink-0">
+                          <Check className="w-3 h-3" />
+                        </div>
+                        {feature}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
     </div>
 
       {/* Gallery Section */}
@@ -911,7 +1068,7 @@ export default function App() {
             <span className="text-orange-600 font-bold text-xs uppercase tracking-[0.3em] mb-4 block">
               Nossos Registros
             </span>
-            <h2 className="text-4xl md:text-5xl font-bold text-stone-900 tracking-tight">
+            <h2 className="text-4xl md:text-5xl font-display font-black text-stone-900 tracking-tight">
               Galeria de Momentos
             </h2>
             <p className="text-stone-500 mt-4 max-w-2xl mx-auto">
@@ -948,6 +1105,37 @@ export default function App() {
         </div>
       </section>
 
+      {/* CTA Section */}
+      <section className="py-24 px-6 bg-stone-900 relative overflow-hidden">
+        <div className="absolute inset-0 opacity-20">
+          <img 
+            src="https://images.unsplash.com/photo-1596422846543-75c6fc197f07?auto=format&fit=crop&q=80" 
+            alt="Background" 
+            className="w-full h-full object-cover"
+            referrerPolicy="no-referrer"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-stone-900 via-stone-900/80 to-transparent" />
+        </div>
+        
+        <div className="max-w-4xl mx-auto text-center relative z-10">
+          <h2 className="text-4xl md:text-6xl font-display font-black text-white mb-6 tracking-tight">
+            Pronto para sua próxima aventura?
+          </h2>
+          <p className="text-stone-300 text-lg md:text-xl mb-10 max-w-2xl mx-auto leading-relaxed">
+            Fale com nossos especialistas e descubra o roteiro perfeito para você e sua família no Espírito Santo.
+          </p>
+          <a 
+            href="https://wa.me/5527999999999" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-3 bg-orange-600 text-white px-8 py-4 rounded-full font-bold text-lg hover:bg-orange-500 transition-colors shadow-xl shadow-orange-600/20"
+          >
+            <MessageCircle className="w-6 h-6" />
+            Fale com nossa equipe
+          </a>
+        </div>
+      </section>
+
       {/* Footer */}
       <footer className="bg-stone-50 border-t border-stone-200 pt-24 pb-12 px-6">
         <div className="max-w-7xl mx-auto">
@@ -960,7 +1148,7 @@ export default function App() {
                   className="h-14 w-auto object-contain"
                   referrerPolicy="no-referrer"
                 />
-                <span className="font-bold text-xl tracking-tight text-stone-900">
+                <span className="font-display font-black text-xl tracking-tight text-stone-900">
                   VIX ES TURISMO
                 </span>
               </div>
@@ -980,9 +1168,9 @@ export default function App() {
             </div>
 
             <div>
-              <h4 className="font-bold text-stone-900 mb-8 uppercase text-xs tracking-widest">Navegação</h4>
+              <h4 className="font-display font-bold text-stone-900 mb-8 uppercase text-xs tracking-widest">Navegação</h4>
               <ul className="flex flex-col gap-4">
-                {['Roteiros', 'Galeria'].map(item => (
+                {['Roteiros', 'Frota', 'Galeria'].map(item => (
                   <li key={item}>
                     <a href={`#${item.toLowerCase()}`} className="text-sm text-stone-500 hover:text-orange-600 transition-colors">{item}</a>
                   </li>
@@ -991,7 +1179,7 @@ export default function App() {
             </div>
 
             <div>
-              <h4 className="font-bold text-stone-900 mb-8 uppercase text-xs tracking-widest">Suporte</h4>
+              <h4 className="font-display font-bold text-stone-900 mb-8 uppercase text-xs tracking-widest">Suporte</h4>
               <ul className="flex flex-col gap-4">
                 {['Centro de Ajuda', 'FAQ', 'Contatos', 'Privacidade', 'Termos'].map(item => (
                   <li key={item}>
@@ -1002,7 +1190,7 @@ export default function App() {
             </div>
 
             <div>
-              <h4 className="font-bold text-stone-900 mb-8 uppercase text-xs tracking-widest">Newsletter</h4>
+              <h4 className="font-display font-bold text-stone-900 mb-8 uppercase text-xs tracking-widest">Newsletter</h4>
               <p className="text-sm text-stone-500 mb-6">Receba dicas e ofertas exclusivas de viagem.</p>
               <div className="flex flex-col gap-3">
                 <input 

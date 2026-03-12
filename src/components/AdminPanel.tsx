@@ -1,125 +1,165 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'motion/react';
-import { X, Plus, Trash2, Save, Image as ImageIcon, MapPin, LogIn, Upload } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { X, Plus, Trash2, Save, Image as ImageIcon, MapPin, LogIn, Upload, LayoutDashboard, Image as ImageLucide, LogOut, Settings } from 'lucide-react';
 import imageCompression from 'browser-image-compression';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
+import { collection, addDoc, updateDoc, deleteDoc, doc, getDocs, onSnapshot } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { auth, db, storage } from '../firebase';
 
-const fileToBase64 = async (file: File): Promise<string | null> => {
+const compressImage = async (file: File): Promise<File> => {
   const options = {
     maxSizeMB: 1,
     maxWidthOrHeight: 1920,
     useWebWorker: true
   };
   try {
-    const compressedFile = await imageCompression(file, options);
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(compressedFile);
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = error => reject(error);
-    });
+    return await imageCompression(file, options);
   } catch (error) {
     console.error("Erro ao comprimir imagem:", error);
-    return null;
+    return file;
   }
 };
 
-export default function AdminPanel({ onClose, initialTab = 'roteiros' }: { onClose: () => void, initialTab?: 'roteiros' | 'gallery' }) {
-  const [token, setToken] = useState<string | null>(localStorage.getItem('admin_token'));
+export default function AdminPanel({ onClose, initialTab = 'roteiros' }: { onClose: () => void, initialTab?: 'roteiros' | 'gallery' | 'frota' }) {
+  const [user, setUser] = useState<any>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
   
-  const [activeTab, setActiveTab] = useState<'roteiros' | 'gallery'>(initialTab);
+  const [activeTab, setActiveTab] = useState<'roteiros' | 'gallery' | 'frota'>(initialTab);
   const [roteiros, setRoteiros] = useState<any[]>([]);
   const [gallery, setGallery] = useState<any[]>([]);
+  const [frota, setFrota] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
   // Form states
   const [editingRoteiro, setEditingRoteiro] = useState<any>(null);
-  const [newImageUrl, setNewImageUrl] = useState('');
+  const [editingFrota, setEditingFrota] = useState<any>(null);
+  const [itemToDelete, setItemToDelete] = useState<{ type: 'roteiro' | 'gallery' | 'frota', id: string } | null>(null);
 
   useEffect(() => {
-    if (token) {
-      fetchData();
-    }
-  }, [token]);
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+    });
+    return () => unsubscribe();
+  }, []);
 
-  const fetchData = async () => {
-    try {
-      const [rotRes, galRes] = await Promise.all([
-        fetch('/api/roteiros'),
-        fetch('/api/gallery')
-      ]);
-      const rotData = await rotRes.json();
-      const galData = await galRes.json();
-      setRoteiros(rotData);
-      setGallery(galData);
-    } catch (error) {
-      console.error("Erro ao buscar dados", error);
+  useEffect(() => {
+    if (user) {
+      const unsubRoteiros = onSnapshot(collection(db, 'roteiros'), (snapshot) => {
+        setRoteiros(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      }, (error) => {
+        console.error("Erro ao carregar roteiros no admin", error);
+      });
+      const unsubGallery = onSnapshot(collection(db, 'gallery'), (snapshot) => {
+        setGallery(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      }, (error) => {
+        console.error("Erro ao carregar galeria no admin", error);
+      });
+      const unsubFrota = onSnapshot(collection(db, 'frota'), (snapshot) => {
+        setFrota(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      }, (error) => {
+        console.error("Erro ao carregar frota no admin", error);
+      });
+      return () => {
+        unsubRoteiros();
+        unsubGallery();
+        unsubFrota();
+      };
     }
-  };
+  }, [user]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError('');
     try {
-      const res = await fetch('/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setToken(data.token);
-        localStorage.setItem('admin_token', data.token);
+      await signInWithEmailAndPassword(auth, email, password);
+    } catch (error: any) {
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential' || error.code === 'auth/invalid-login-credentials') {
+        if (email === 'fabio.fernandes@city.com' && password === '745896321') {
+          try {
+            await createUserWithEmailAndPassword(auth, email, password);
+          } catch (createError: any) {
+            setLoginError('Erro ao criar usuário admin: ' + createError.message);
+          }
+        } else {
+          setLoginError('Credenciais inválidas.');
+        }
       } else {
-        setLoginError(data.error || 'Erro ao fazer login');
+        setLoginError('Erro ao fazer login: ' + error.message);
       }
-    } catch (error) {
-      setLoginError('Erro de conexão');
     }
   };
 
-  const handleLogout = () => {
-    setToken(null);
-    localStorage.removeItem('admin_token');
+  const handleLogout = async () => {
+    await signOut(auth);
   };
 
   const handleSaveRoteiro = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      const method = editingRoteiro.id ? 'PUT' : 'POST';
-      const url = editingRoteiro.id ? `/api/roteiros/${editingRoteiro.id}` : '/api/roteiros';
-      
-      await fetch(url, {
-        method,
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(editingRoteiro)
-      });
-      
+      if (editingRoteiro.id) {
+        const docRef = doc(db, 'roteiros', editingRoteiro.id);
+        const { id, ...data } = editingRoteiro;
+        await updateDoc(docRef, data);
+      } else {
+        await addDoc(collection(db, 'roteiros'), editingRoteiro);
+      }
       setEditingRoteiro(null);
-      fetchData();
     } catch (error) {
       console.error("Erro ao salvar roteiro", error);
     }
     setLoading(false);
   };
 
-  const handleDeleteRoteiro = async (id: number) => {
-    if (!confirm('Tem certeza que deseja excluir este roteiro?')) return;
+  const handleSaveFrota = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
     try {
-      await fetch(`/api/roteiros/${id}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      fetchData();
+      if (editingFrota.id) {
+        const docRef = doc(db, 'frota', editingFrota.id);
+        const { id, ...data } = editingFrota;
+        await updateDoc(docRef, data);
+      } else {
+        await addDoc(collection(db, 'frota'), editingFrota);
+      }
+      setEditingFrota(null);
     } catch (error) {
-      console.error("Erro ao excluir roteiro", error);
+      console.error("Erro ao salvar frota", error);
     }
+    setLoading(false);
+  };
+
+  const confirmDeleteRoteiro = (id: string) => {
+    setItemToDelete({ type: 'roteiro', id });
+  };
+
+  const confirmDeleteFrota = (id: string) => {
+    setItemToDelete({ type: 'frota', id });
+  };
+
+  const confirmDeletePhoto = (id: string) => {
+    setItemToDelete({ type: 'gallery', id });
+  };
+
+  const executeDelete = async () => {
+    if (!itemToDelete) return;
+    setLoading(true);
+    try {
+      if (itemToDelete.type === 'roteiro') {
+        await deleteDoc(doc(db, 'roteiros', itemToDelete.id));
+      } else if (itemToDelete.type === 'frota') {
+        await deleteDoc(doc(db, 'frota', itemToDelete.id));
+      } else {
+        await deleteDoc(doc(db, 'gallery', itemToDelete.id));
+      }
+    } catch (error) {
+      console.error("Erro ao excluir", error);
+    }
+    setLoading(false);
+    setItemToDelete(null);
   };
 
   const handleAddPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -127,37 +167,22 @@ export default function AdminPanel({ onClose, initialTab = 'roteiros' }: { onClo
     if (!file) return;
     setLoading(true);
     
-    const base64 = await fileToBase64(file);
-    if (base64) {
-      try {
-        await fetch('/api/gallery', {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({ url: base64 })
-        });
-        fetchData();
-      } catch (error) {
-        console.error("Erro ao adicionar foto", error);
-      }
+    try {
+      const compressedFile = await compressImage(file);
+      const storageRef = ref(storage, `gallery/${Date.now()}_${compressedFile.name}`);
+      await uploadBytes(storageRef, compressedFile);
+      const url = await getDownloadURL(storageRef);
+      
+      await addDoc(collection(db, 'gallery'), { 
+        url, 
+        createdAt: new Date().toISOString() 
+      });
+    } catch (error) {
+      console.error("Erro ao adicionar foto", error);
     }
+    
     setLoading(false);
     e.target.value = ''; // reset input
-  };
-
-  const handleDeletePhoto = async (id: number) => {
-    if (!confirm('Tem certeza que deseja excluir esta foto?')) return;
-    try {
-      await fetch(`/api/gallery/${id}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      fetchData();
-    } catch (error) {
-      console.error("Erro ao excluir foto", error);
-    }
   };
 
   const handleAddRoteiroImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -167,8 +192,15 @@ export default function AdminPanel({ onClose, initialTab = 'roteiros' }: { onClo
     
     const newImages = [...(editingRoteiro.images || [])];
     for (const file of files) {
-      const base64 = await fileToBase64(file);
-      if (base64) newImages.push(base64);
+      try {
+        const compressedFile = await compressImage(file);
+        const storageRef = ref(storage, `roteiros/${Date.now()}_${compressedFile.name}`);
+        await uploadBytes(storageRef, compressedFile);
+        const url = await getDownloadURL(storageRef);
+        newImages.push(url);
+      } catch (error) {
+        console.error("Erro ao fazer upload da imagem do roteiro", error);
+      }
     }
     
     setEditingRoteiro({ ...editingRoteiro, images: newImages });
@@ -182,7 +214,26 @@ export default function AdminPanel({ onClose, initialTab = 'roteiros' }: { onClo
     setEditingRoteiro({ ...editingRoteiro, images: newImages });
   };
 
-  if (!token) {
+  const handleAddFrotaImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setLoading(true);
+    
+    try {
+      const compressedFile = await compressImage(file);
+      const storageRef = ref(storage, `frota/${Date.now()}_${compressedFile.name}`);
+      await uploadBytes(storageRef, compressedFile);
+      const url = await getDownloadURL(storageRef);
+      setEditingFrota({ ...editingFrota, image: url });
+    } catch (error) {
+      console.error("Erro ao fazer upload da imagem da frota", error);
+    }
+    
+    setLoading(false);
+    e.target.value = '';
+  };
+
+  if (!user) {
     return (
       <motion.div 
         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -191,7 +242,10 @@ export default function AdminPanel({ onClose, initialTab = 'roteiros' }: { onClo
         <div className="bg-white rounded-3xl p-8 w-full max-w-md relative">
           <button onClick={onClose} className="absolute top-4 right-4 text-stone-400 hover:text-stone-900"><X /></button>
           <div className="text-center mb-8">
-            <h2 className="text-2xl font-bold text-stone-900">Acesso Restrito</h2>
+            <div className="w-16 h-16 bg-orange-100 text-orange-600 rounded-2xl flex items-center justify-center mx-auto mb-6">
+              <Settings className="w-8 h-8" />
+            </div>
+            <h2 className="text-2xl font-display font-bold text-stone-900">Acesso Restrito</h2>
             <p className="text-stone-500 text-sm mt-2">Faça login para gerenciar o conteúdo.</p>
           </div>
           <form onSubmit={handleLogin} className="space-y-4">
@@ -222,41 +276,74 @@ export default function AdminPanel({ onClose, initialTab = 'roteiros' }: { onClo
   return (
     <motion.div 
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[100] bg-stone-100 flex flex-col"
+      className="fixed inset-0 z-[100] bg-stone-100 flex"
     >
-      <header className="bg-white border-b border-stone-200 px-6 py-4 flex justify-between items-center">
-        <div className="flex items-center gap-4">
-          <h1 className="text-xl font-bold text-stone-900">Painel Administrativo</h1>
-          <div className="flex bg-stone-100 rounded-lg p-1">
-            <button 
-              onClick={() => setActiveTab('roteiros')}
-              className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${activeTab === 'roteiros' ? 'bg-white shadow-sm text-stone-900' : 'text-stone-500 hover:text-stone-700'}`}
-            >
-              Roteiros
-            </button>
-            <button 
-              onClick={() => setActiveTab('gallery')}
-              className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${activeTab === 'gallery' ? 'bg-white shadow-sm text-stone-900' : 'text-stone-500 hover:text-stone-700'}`}
-            >
-              Fotos
-            </button>
-          </div>
+      {/* Sidebar */}
+      <aside className="w-64 bg-white border-r border-stone-200 flex flex-col shadow-sm z-10">
+        <div className="p-6 border-b border-stone-100 flex items-center justify-between">
+          <h1 className="text-xl font-display font-black text-stone-900 tracking-tight">Admin</h1>
+          <button onClick={onClose} className="p-2 bg-stone-100 rounded-full hover:bg-stone-200 text-stone-600 transition-colors" title="Fechar Painel">
+            <X className="w-4 h-4" />
+          </button>
         </div>
-        <div className="flex items-center gap-4">
-          <button onClick={handleLogout} className="text-sm text-stone-500 hover:text-stone-900">Sair</button>
-          <button onClick={onClose} className="p-2 bg-stone-100 rounded-full hover:bg-stone-200 text-stone-600"><X className="w-5 h-5" /></button>
-        </div>
-      </header>
+        
+        <nav className="flex-1 p-4 flex flex-col gap-2">
+          <button 
+            onClick={() => setActiveTab('roteiros')}
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-display font-bold transition-all ${
+              activeTab === 'roteiros' 
+                ? 'bg-orange-50 text-orange-600' 
+                : 'text-stone-500 hover:bg-stone-50 hover:text-stone-900'
+            }`}
+          >
+            <LayoutDashboard className="w-5 h-5" />
+            Roteiros
+          </button>
+          <button 
+            onClick={() => setActiveTab('frota')}
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-display font-bold transition-all ${
+              activeTab === 'frota' 
+                ? 'bg-orange-50 text-orange-600' 
+                : 'text-stone-500 hover:bg-stone-50 hover:text-stone-900'
+            }`}
+          >
+            <MapPin className="w-5 h-5" />
+            Frota
+          </button>
+          <button 
+            onClick={() => setActiveTab('gallery')}
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-display font-bold transition-all ${
+              activeTab === 'gallery' 
+                ? 'bg-orange-50 text-orange-600' 
+                : 'text-stone-500 hover:bg-stone-50 hover:text-stone-900'
+            }`}
+          >
+            <ImageLucide className="w-5 h-5" />
+            Galeria de Fotos
+          </button>
+        </nav>
 
-      <main className="flex-1 overflow-y-auto p-6">
-        <div className="max-w-5xl mx-auto">
+        <div className="p-4 border-t border-stone-100">
+          <button 
+            onClick={handleLogout} 
+            className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm font-display font-bold text-stone-500 hover:bg-red-50 hover:text-red-600 transition-all"
+          >
+            <LogOut className="w-5 h-5" />
+            Sair da Conta
+          </button>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <main className="flex-1 overflow-y-auto bg-stone-50/50 p-8">
+        <div className="max-w-6xl mx-auto">
           
           {activeTab === 'roteiros' && (
             <div>
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-stone-900">Gerenciar Roteiros</h2>
+                <h2 className="text-2xl font-display font-bold text-stone-900">Gerenciar Roteiros</h2>
                 <button 
-                  onClick={() => setEditingRoteiro({ title: '', subtitle: '', price: '', timeDeparture: '', timeReturn: '', images: [], places: [], courtesy: [], history: '', gastronomy: '', curiosities: '' })}
+                  onClick={() => setEditingRoteiro({ title: '', subtitle: '', price: '', priceCash: '', priceInstallment: '', timeDeparture: '', timeReturn: '', images: [], places: [], courtesy: [], history: '', gastronomy: '', curiosities: '' })}
                   className="bg-stone-900 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-stone-800"
                 >
                   <Plus className="w-4 h-4" /> Novo Roteiro
@@ -265,6 +352,11 @@ export default function AdminPanel({ onClose, initialTab = 'roteiros' }: { onClo
 
               {editingRoteiro ? (
                 <form onSubmit={handleSaveRoteiro} className="bg-white p-6 rounded-2xl shadow-sm border border-stone-200 space-y-4">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-xl font-display font-bold text-stone-900">
+                      {editingRoteiro.id ? 'Editar Roteiro' : 'Novo Roteiro'}
+                    </h3>
+                  </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-bold text-stone-400 uppercase mb-1">Título</label>
@@ -275,8 +367,16 @@ export default function AdminPanel({ onClose, initialTab = 'roteiros' }: { onClo
                       <input type="text" value={editingRoteiro.subtitle} onChange={e => setEditingRoteiro({...editingRoteiro, subtitle: e.target.value})} className="w-full border rounded-lg px-3 py-2" required />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-stone-400 uppercase mb-1">Preço</label>
-                      <input type="text" value={editingRoteiro.price} onChange={e => setEditingRoteiro({...editingRoteiro, price: e.target.value})} className="w-full border rounded-lg px-3 py-2" required />
+                      <label className="block text-xs font-bold text-stone-400 uppercase mb-1">Preço Base (por pessoa)</label>
+                      <input type="text" value={editingRoteiro.price} onChange={e => setEditingRoteiro({...editingRoteiro, price: e.target.value})} className="w-full border rounded-lg px-3 py-2" required placeholder="Ex: 150,00" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-stone-400 uppercase mb-1">Preço à Vista (por pessoa)</label>
+                      <input type="text" value={editingRoteiro.priceCash || ''} onChange={e => setEditingRoteiro({...editingRoteiro, priceCash: e.target.value})} className="w-full border rounded-lg px-3 py-2" placeholder="Ex: 135,00" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-stone-400 uppercase mb-1">Preço Parcelado (por pessoa)</label>
+                      <input type="text" value={editingRoteiro.priceInstallment || ''} onChange={e => setEditingRoteiro({...editingRoteiro, priceInstallment: e.target.value})} className="w-full border rounded-lg px-3 py-2" placeholder="Ex: 3x de 55,00" />
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <div>
@@ -341,21 +441,27 @@ export default function AdminPanel({ onClose, initialTab = 'roteiros' }: { onClo
                   </div>
                 </form>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="flex flex-col gap-4">
                   {roteiros.map(roteiro => (
-                    <div key={roteiro.id} className="bg-white p-4 rounded-2xl border border-stone-200 shadow-sm flex flex-col">
-                      <div className="h-32 bg-stone-100 rounded-xl mb-4 overflow-hidden">
+                    <div key={roteiro.id} className="bg-white p-4 rounded-2xl border border-stone-200 shadow-sm flex items-center gap-6 hover:shadow-md transition-shadow">
+                      <div className="w-32 h-24 bg-stone-100 rounded-xl overflow-hidden shrink-0">
                         {roteiro.images?.[0] ? (
                           <img src={roteiro.images[0]} alt="" className="w-full h-full object-cover" />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center text-stone-300"><ImageIcon /></div>
+                          <div className="w-full h-full flex items-center justify-center text-stone-300"><ImageIcon className="w-8 h-8" /></div>
                         )}
                       </div>
-                      <h3 className="font-bold text-stone-900">{roteiro.title}</h3>
-                      <p className="text-sm text-stone-500 mb-4">{roteiro.subtitle}</p>
-                      <div className="mt-auto flex gap-2">
-                        <button onClick={() => setEditingRoteiro(roteiro)} className="flex-1 bg-stone-100 text-stone-700 py-2 rounded-lg text-sm font-medium hover:bg-stone-200">Editar</button>
-                        <button onClick={() => handleDeleteRoteiro(roteiro.id)} className="p-2 text-red-500 bg-red-50 hover:bg-red-100 rounded-lg"><Trash2 className="w-5 h-5" /></button>
+                      <div className="flex-1">
+                        <h3 className="font-display font-bold text-stone-900 text-lg">{roteiro.title}</h3>
+                        <p className="text-sm text-stone-500 line-clamp-1">{roteiro.subtitle}</p>
+                        <div className="flex items-center gap-4 mt-2">
+                          <span className="text-xs font-bold text-orange-600 bg-orange-50 px-2 py-1 rounded-md">R$ {roteiro.price}</span>
+                          {roteiro.timeDeparture && <span className="text-xs text-stone-500">Saída: {roteiro.timeDeparture}</span>}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button onClick={() => setEditingRoteiro(roteiro)} className="px-4 py-2 bg-stone-100 text-stone-700 rounded-xl text-sm font-bold hover:bg-stone-200 transition-colors">Editar</button>
+                        <button onClick={() => confirmDeleteRoteiro(roteiro.id)} className="p-2 text-red-500 bg-red-50 hover:bg-red-100 rounded-xl transition-colors"><Trash2 className="w-5 h-5" /></button>
                       </div>
                     </div>
                   ))}
@@ -364,17 +470,115 @@ export default function AdminPanel({ onClose, initialTab = 'roteiros' }: { onClo
             </div>
           )}
 
+          {activeTab === 'frota' && (
+            <div>
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-display font-bold text-stone-900">Gerenciar Frota</h2>
+                <button 
+                  onClick={() => setEditingFrota({ title: '', description: '', image: '', features: [] })}
+                  className="bg-stone-900 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-stone-800"
+                >
+                  <Plus className="w-4 h-4" /> Novo Veículo
+                </button>
+              </div>
+
+              {editingFrota ? (
+                <form onSubmit={handleSaveFrota} className="bg-white p-6 rounded-2xl shadow-sm border border-stone-200 space-y-4">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-xl font-display font-bold text-stone-900">
+                      {editingFrota.id ? 'Editar Veículo' : 'Novo Veículo'}
+                    </h3>
+                  </div>
+                  <div className="grid grid-cols-1 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-stone-400 uppercase mb-1">Título</label>
+                      <input type="text" value={editingFrota.title} onChange={e => setEditingFrota({...editingFrota, title: e.target.value})} className="w-full border rounded-lg px-3 py-2" required placeholder="Ex: Vans Executivas" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-stone-400 uppercase mb-1">Descrição</label>
+                      <textarea value={editingFrota.description} onChange={e => setEditingFrota({...editingFrota, description: e.target.value})} className="w-full border rounded-lg px-3 py-2" rows={3} required placeholder="Ex: Ideais para grupos e famílias..." />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-stone-400 uppercase mb-1">Características (separadas por vírgula)</label>
+                      <input type="text" value={editingFrota.features?.join(', ')} onChange={e => setEditingFrota({...editingFrota, features: e.target.value.split(',').map(s => s.trim()).filter(Boolean)})} className="w-full border rounded-lg px-3 py-2" placeholder="Ex: Ar-condicionado, Wi-Fi a bordo" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-stone-400 uppercase mb-2">Imagem do Veículo</label>
+                    <div className="grid grid-cols-2 gap-4 mb-4">
+                      {editingFrota.image && (
+                        <div className="relative aspect-video bg-stone-100 rounded-lg overflow-hidden group">
+                          <img src={editingFrota.image} alt="" className="w-full h-full object-cover" />
+                          <button 
+                            type="button"
+                            onClick={() => setEditingFrota({...editingFrota, image: ''})}
+                            className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white"
+                          >
+                            <Trash2 className="w-5 h-5" />
+                          </button>
+                        </div>
+                      )}
+                      {!editingFrota.image && (
+                        <label className="aspect-video bg-stone-50 border-2 border-dashed border-stone-200 rounded-lg flex flex-col items-center justify-center text-stone-400 hover:bg-stone-100 hover:text-stone-600 cursor-pointer transition-colors">
+                          <Upload className="w-6 h-6 mb-2" />
+                          <span className="text-xs font-medium">Adicionar Imagem</span>
+                          <input type="file" accept="image/*" onChange={handleAddFrotaImage} className="hidden" />
+                        </label>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-4 border-t">
+                    <button type="button" onClick={() => setEditingFrota(null)} className="px-4 py-2 text-stone-500 hover:bg-stone-100 rounded-lg">Cancelar</button>
+                    <button type="submit" disabled={loading} className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 flex items-center gap-2">
+                      <Save className="w-4 h-4" /> Salvar
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <div className="flex flex-col gap-4">
+                  {frota.map(item => (
+                    <div key={item.id} className="bg-white p-4 rounded-2xl border border-stone-200 shadow-sm flex items-center gap-6 hover:shadow-md transition-shadow">
+                      <div className="w-32 h-24 bg-stone-100 rounded-xl overflow-hidden shrink-0">
+                        {item.image ? (
+                          <img src={item.image} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-stone-300"><ImageIcon className="w-8 h-8" /></div>
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-display font-bold text-stone-900 text-lg">{item.title}</h3>
+                        <p className="text-sm text-stone-500 line-clamp-1">{item.description}</p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button onClick={() => setEditingFrota(item)} className="px-4 py-2 bg-stone-100 text-stone-700 rounded-xl text-sm font-bold hover:bg-stone-200 transition-colors">Editar</button>
+                        <button onClick={() => confirmDeleteFrota(item.id)} className="p-2 text-red-500 bg-red-50 hover:bg-red-100 rounded-xl transition-colors"><Trash2 className="w-5 h-5" /></button>
+                      </div>
+                    </div>
+                  ))}
+                  {frota.length === 0 && (
+                    <div className="text-center py-12 bg-white rounded-2xl border border-stone-200 border-dashed">
+                      <MapPin className="w-12 h-12 text-stone-300 mx-auto mb-4" />
+                      <p className="text-stone-500 font-medium">Nenhum veículo cadastrado na frota.</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
           {activeTab === 'gallery' && (
             <div>
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-stone-900">Galeria de Fotos</h2>
+                <h2 className="text-2xl font-display font-bold text-stone-900">Galeria de Fotos</h2>
               </div>
               
               <div className="bg-white p-6 rounded-2xl shadow-sm border border-stone-200 mb-8 flex flex-col items-center justify-center text-center">
                 <div className="w-16 h-16 bg-orange-50 text-orange-600 rounded-full flex items-center justify-center mb-4">
                   <Upload className="w-8 h-8" />
                 </div>
-                <h3 className="font-bold text-stone-900 mb-2">Adicionar Nova Foto</h3>
+                <h3 className="font-display font-bold text-stone-900 mb-2">Adicionar Nova Foto</h3>
                 <p className="text-stone-500 text-sm mb-6">Faça o upload de uma imagem do seu computador para a galeria.</p>
                 <label className="bg-stone-900 text-white px-8 py-3 rounded-xl font-bold hover:bg-stone-800 cursor-pointer transition-colors flex items-center gap-2">
                   <Plus className="w-5 h-5" />
@@ -389,7 +593,7 @@ export default function AdminPanel({ onClose, initialTab = 'roteiros' }: { onClo
                   <div key={item.id} className="relative group rounded-xl overflow-hidden aspect-square bg-stone-100">
                     <img src={item.url} alt="" className="w-full h-full object-cover" />
                     <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                      <button onClick={() => handleDeletePhoto(item.id)} className="bg-red-500 text-white p-3 rounded-full hover:bg-red-600 transition-transform hover:scale-110">
+                      <button onClick={() => confirmDeletePhoto(item.id)} className="bg-red-500 text-white p-3 rounded-full hover:bg-red-600 transition-transform hover:scale-110">
                         <Trash2 className="w-5 h-5" />
                       </button>
                     </div>
@@ -401,6 +605,46 @@ export default function AdminPanel({ onClose, initialTab = 'roteiros' }: { onClo
 
         </div>
       </main>
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {itemToDelete && (
+          <motion.div 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[200] bg-black/50 flex items-center justify-center p-4"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }} 
+              animate={{ scale: 1, opacity: 1 }} 
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl"
+            >
+              <h3 className="text-xl font-display font-bold text-stone-900 mb-2">Confirmar Exclusão</h3>
+              <p className="text-stone-500 mb-6">
+                Tem certeza que deseja excluir {itemToDelete.type === 'roteiro' ? 'este roteiro' : 'esta foto'}? Esta ação não pode ser desfeita.
+              </p>
+              <div className="flex justify-end gap-3">
+                <button 
+                  onClick={() => setItemToDelete(null)}
+                  className="px-4 py-2 text-stone-600 hover:bg-stone-100 rounded-lg font-medium transition-colors"
+                  disabled={loading}
+                >
+                  Cancelar
+                </button>
+                <button 
+                  onClick={executeDelete}
+                  className="px-4 py-2 bg-red-500 text-white rounded-lg font-medium hover:bg-red-600 transition-colors flex items-center gap-2"
+                  disabled={loading}
+                >
+                  {loading ? 'Excluindo...' : 'Sim, excluir'}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
