@@ -27,22 +27,14 @@ import {
   X, 
   Image as ImageIcon, 
   MapPin, 
-  DollarSign, 
-  Clock,
   Phone,
-  Instagram,
-  Facebook,
   LogOut,
   Lock,
   User as UserIcon,
   Upload,
   Loader2,
   Download,
-  Database,
-  Sun,
-  Utensils,
-  Sparkles,
-  LayoutGrid
+  Database
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -73,73 +65,14 @@ interface ContactInfo {
   email: string;
 }
 
-interface QuickPost {
-  id: string;
-  image: string;
-  description: string;
-  comment: string;
-  createdAt: number;
-}
-
-interface SunsetLocation {
-  id: string;
-  title: string;
-  image: string;
-  type: 'NASCER DO SOL' | 'PÔR DO SOL';
-  credit: string;
-}
-
-interface MoquecaRecipe {
-  id: string;
-  title: string;
-  description: string;
-  prepTime: string;
-  cookTime: string;
-  servings: string;
-  calories: string;
-  ingredients: {
-    marinade: string[];
-    cooking: string[];
-  };
-  instructions: string[];
-  notes: string[];
-  image: string;
-}
-
-interface Experience {
-  id: string;
-  title: string;
-  description: string;
-  icon: string;
-  color: string;
-}
-
-interface HeroData {
-  id: string;
-  title: string;
-  subtitle: string;
-  description: string;
-  backgroundImage: string;
-}
-
-export default function AdminPanel({ onExit, initialTab }: { onExit: () => void, initialTab?: 'roteiros' | 'quickPosts' | 'sunset' | 'moqueca' | 'experiences' | 'hero' | 'settings', key?: string }) {
+export default function AdminPanel({ onExit, initialTab }: { onExit: () => void, initialTab?: 'roteiros' | 'settings', key?: string }) {
   const [user, setUser] = useState<User | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
   const [roteiros, setRoteiros] = useState<Roteiro[]>([]);
-  const [quickPosts, setQuickPosts] = useState<QuickPost[]>([]);
-  const [sunsetLocations, setSunsetLocations] = useState<SunsetLocation[]>([]);
-  const [moquecaRecipe, setMoquecaRecipe] = useState<MoquecaRecipe | null>(null);
-  const [experiences, setExperiences] = useState<Experience[]>([]);
-  const [heroData, setHeroData] = useState<HeroData | null>(null);
   const [loading, setLoading] = useState(true);
   const [editingRoteiro, setEditingRoteiro] = useState<Partial<Roteiro> | null>(null);
-  const [editingQuickPost, setEditingQuickPost] = useState<Partial<QuickPost> | null>(null);
-  const [editingSunset, setEditingSunset] = useState<Partial<SunsetLocation> | null>(null);
-  const [editingExperience, setEditingExperience] = useState<Partial<Experience> | null>(null);
-  const [editingMoqueca, setEditingMoqueca] = useState<Partial<MoquecaRecipe> | null>(null);
-  const [editingHero, setEditingHero] = useState<Partial<HeroData> | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [activeTab, setActiveTab] = useState(initialTab || 'roteiros');
@@ -182,40 +115,6 @@ export default function AdminPanel({ onExit, initialTab }: { onExit: () => void,
       });
       unsubscribers.push(unsubRoteiros);
 
-      // Real-time Quick Posts
-      const unsubQuickPosts = onSnapshot(query(collection(db, 'quick_posts'), orderBy('createdAt', 'desc')), (snapshot) => {
-        setQuickPosts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as QuickPost[]);
-      });
-      unsubscribers.push(unsubQuickPosts);
-
-      // Real-time Sunset Locations
-      const unsubSunset = onSnapshot(collection(db, 'sunset_locations'), (snapshot) => {
-        setSunsetLocations(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as SunsetLocation[]);
-      });
-      unsubscribers.push(unsubSunset);
-
-      // Real-time Moqueca Recipe
-      const unsubMoqueca = onSnapshot(collection(db, 'moqueca_recipe'), (snapshot) => {
-        if (!snapshot.empty) {
-          setMoquecaRecipe({ id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as MoquecaRecipe);
-        }
-      });
-      unsubscribers.push(unsubMoqueca);
-
-      // Real-time Experiences
-      const unsubExperiences = onSnapshot(collection(db, 'experiences'), (snapshot) => {
-        setExperiences(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Experience[]);
-      });
-      unsubscribers.push(unsubExperiences);
-
-      // Real-time Hero Data
-      const unsubHero = onSnapshot(collection(db, 'hero_data'), (snapshot) => {
-        if (!snapshot.empty) {
-          setHeroData({ id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as HeroData);
-        }
-      });
-      unsubscribers.push(unsubHero);
-
       // Real-time Contact Info
       const unsubSettings = onSnapshot(collection(db, 'settings'), (snapshot) => {
         if (!snapshot.empty) {
@@ -247,10 +146,18 @@ export default function AdminPanel({ onExit, initialTab }: { onExit: () => void,
 
   const handleLogout = async () => {
     try {
+      // Clear local user state first to trigger UI update immediately
+      setUser(null);
+      
+      // Sign out from Firebase
       await signOut(auth);
+      
+      // Close the admin panel
       onExit();
     } catch (error) {
       console.error("Logout error:", error);
+      // Even if signOut fails, we should try to close the panel
+      onExit();
     }
   };
 
@@ -306,7 +213,13 @@ export default function AdminPanel({ onExit, initialTab }: { onExit: () => void,
           }, 
           (error) => {
             console.error("Error uploading file:", error);
-            alert("Erro ao fazer upload da imagem. Verifique sua conexão ou permissões.");
+            let errorMessage = "Erro ao fazer upload da imagem.";
+            if (error.code === 'storage/unauthorized') {
+              errorMessage = "Sem permissão para upload. Verifique as regras do Firebase Storage.";
+            } else if (error.code === 'storage/canceled') {
+              errorMessage = "Upload cancelado.";
+            }
+            alert(errorMessage);
             setUploading(false);
             setUploadProgress(0);
             reject(error);
@@ -359,34 +272,6 @@ export default function AdminPanel({ onExit, initialTab }: { onExit: () => void,
     }
   };
 
-  const handleSaveQuickPost = async () => {
-    if (!editingQuickPost?.image) return;
-
-    try {
-      if (editingQuickPost.id) {
-        const { id, ...data } = editingQuickPost;
-        await updateDoc(doc(db, 'quick_posts', id), data);
-      } else {
-        await addDoc(collection(db, 'quick_posts'), {
-          ...editingQuickPost,
-          createdAt: Date.now()
-        });
-      }
-      setEditingQuickPost(null);
-    } catch (error) {
-      console.error("Error saving quick post:", error);
-    }
-  };
-
-  const handleDeleteQuickPost = async (id: string) => {
-    if (!confirm('Tem certeza que deseja excluir este post?')) return;
-    try {
-      await deleteDoc(doc(db, 'quick_posts', id));
-    } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, `quick_posts/${id}`);
-    }
-  };
-
   const handleSaveSettings = async () => {
     try {
       const settingsSnap = await getDocs(collection(db, 'settings'));
@@ -401,91 +286,12 @@ export default function AdminPanel({ onExit, initialTab }: { onExit: () => void,
     }
   };
 
-  const handleSaveSunset = async () => {
-    if (!editingSunset?.title) return;
-    try {
-      if (editingSunset.id) {
-        const { id, ...data } = editingSunset;
-        await updateDoc(doc(db, 'sunset_locations', id), data);
-      } else {
-        await addDoc(collection(db, 'sunset_locations'), editingSunset);
-      }
-      setEditingSunset(null);
-    } catch (error) {
-      console.error("Error saving sunset location:", error);
-    }
-  };
-
-  const handleDeleteSunset = async (id: string) => {
-    if (!confirm('Excluir este local?')) return;
-    try {
-      await deleteDoc(doc(db, 'sunset_locations', id));
-    } catch (error) {
-      console.error("Error deleting sunset location:", error);
-    }
-  };
-
-  const handleSaveExperience = async () => {
-    if (!editingExperience?.title) return;
-    try {
-      if (editingExperience.id) {
-        const { id, ...data } = editingExperience;
-        await updateDoc(doc(db, 'experiences', id), data);
-      } else {
-        await addDoc(collection(db, 'experiences'), editingExperience);
-      }
-      setEditingExperience(null);
-    } catch (error) {
-      console.error("Error saving experience:", error);
-    }
-  };
-
-  const handleDeleteExperience = async (id: string) => {
-    if (!confirm('Excluir esta experiência?')) return;
-    try {
-      await deleteDoc(doc(db, 'experiences', id));
-    } catch (error) {
-      console.error("Error deleting experience:", error);
-    }
-  };
-
-  const handleSaveMoqueca = async () => {
-    if (!editingMoqueca?.title) return;
-    try {
-      if (editingMoqueca.id) {
-        const { id, ...data } = editingMoqueca;
-        await updateDoc(doc(db, 'moqueca_recipe', id), data);
-      } else {
-        await addDoc(collection(db, 'moqueca_recipe'), editingMoqueca);
-      }
-      setEditingMoqueca(null);
-    } catch (error) {
-      console.error("Error saving moqueca recipe:", error);
-    }
-  };
-
-  const handleSaveHero = async () => {
-    if (!editingHero?.title) return;
-    try {
-      if (editingHero.id) {
-        const { id, ...data } = editingHero;
-        await updateDoc(doc(db, 'hero_data', id), data);
-      } else {
-        await addDoc(collection(db, 'hero_data'), editingHero);
-      }
-      setEditingHero(null);
-    } catch (error) {
-      console.error("Error saving hero data:", error);
-    }
-  };
-
   const handleSeedDatabase = async () => {
     if (!confirm('Deseja popular o banco de dados com os dados iniciais? Isso só deve ser feito se o banco estiver vazio.')) return;
     
     try {
       setLoading(true);
-      
-      // Seed Roteiros if empty
+       // Seed Roteiros if empty
       if (roteiros.length === 0) {
         const initialRoteiros = [
           {
@@ -526,7 +332,7 @@ export default function AdminPanel({ onExit, initialTab }: { onExit: () => void,
             places: ["Parque da Pedra Azul", "Quadrado de São Paulinho", "Cervejaria Ronchi", "Biscoite Kebis", "Igreja Luterana", "Museu do Colono", "Rua do Laser", "Cervejaria Barba Ruiva", "Portal da Cidade"],
             history: "Colonizada por alemães e italianos, a região mantém viva a cultura europeia. Domingos Martins é um pedaço da Alemanha nas montanhas capixabas, com arquitetura enxaimel e festas tradicionais.",
             gastronomy: "Destaque para o Socol (embutido de origem italiana), queijos finos, cafés especiais premiados e a culinária típica alemã como o joelho de porco.",
-            curiosities: "A Pedra Azul, um afloramento de granito de 1.822 metros, possui uma formação que lembra um lagarto subindo a pedra, mudando de cor até 36 vezes por dia conforme a luz."
+            curiosities: "A Pedra Azul, um afloramento de granito de 1.822 metros, possui uma formation que lembra um lagarto subindo a pedra, mudando de cor até 36 vezes por dia conforme a luz."
           },
           {
             title: "Buda Gigante e Santa Teresa",
@@ -573,68 +379,6 @@ export default function AdminPanel({ onExit, initialTab }: { onExit: () => void,
         }
       }
 
-      // Seed Sunset if empty
-      if (sunsetLocations.length === 0) {
-        const initialSunset = [
-          { title: "1- CURVA DA JUREMA (VITÓRIA)", image: "https://midias.agazeta.com.br/2024/09/09/nascer-do-sol-na-curva-da-jurema-2417744-article.jpg", type: "NASCER DO SOL", credit: "Instagram/@remarvix" },
-          { title: "2- CAMBURI (VITÓRIA)", image: "https://midias.agazeta.com.br/2024/09/09/o-nascer-do-sol-da-praia-de-camburi-em-vitoria-2417642-article.jpg", type: "NASCER DO SOL", credit: "Ramon Alves" },
-          { title: "3- MANGUINHOS (SERRA)", image: "https://midias.agazeta.com.br/2024/09/09/o-nascer-do-sol-em-manguinhos-na-serra-e-encantador-2417764-article.jpg", type: "NASCER DO SOL", credit: "Reprodução/Instagram/@docemanguinhos" },
-          { title: "4- MORRO DO MORENO (VILA VELHA)", image: "https://midias.agazeta.com.br/2024/09/10/o-nascer-do-sol-no-morro-do-moreno-2419702-article.png", type: "NASCER DO SOL", credit: "Reprodução/Instagram/@mariojuniorjo/@cafeoracaomorrodomoreno" },
-          { title: "5- FONTE GRANDE (VITÓRIA)", image: "https://midias.agazeta.com.br/2024/09/09/o-por-do-sol-no-parque-da-fonte-grande-e-um-verdadeiro-espetaculo-2417777-article.jpg", type: "PÔR DO SOL", credit: "Reprodução/Instagram/@tavares.expedicoes" },
-          { title: "6- ILHA DAS CAIEIRAS (VITÓRIA)", image: "https://midias.agazeta.com.br/2024/09/09/por-do-sol-da-ilha-das-caieiras--2417643-article.jpg", type: "PÔR DO SOL", credit: "Reprodução/Instagram/@vanda_lopes1000" },
-          { title: "7- ORLA DE PORTO DE SANTANA (CARIACICA)", image: "https://midias.agazeta.com.br/2024/09/09/a-orla-de-cariacica-e-um-point-para-assistir-o-por-do-sol-2417792-article.jpg", type: "PÔR DO SOL", credit: "Reprodução/Instagram/@rfotosporai/@orladecariacica" },
-          { title: "8- CONVENTO DA PENHA (VILA VELHA)", image: "https://midias.agazeta.com.br/2024/09/09/visao-do-convento-da-penha-no-por-do-sol-2417833-article.jpg", type: "PÔR DO SOL", credit: "Reprodução/Instagram/@visaodrone027" },
-          { title: "9- BEIRA MAR (VITÓRIA)", image: "https://midias.agazeta.com.br/2024/09/09/por-do-sol-da-baia-de-vitoria-2417644-article.jpg", type: "PÔR DO SOL", credit: "Jansen Dias Lube" },
-          { title: "10- MEAÍPE - GUARAPARI", image: "https://midias.agazeta.com.br/2024/09/09/o-por-do-sol-em-meaipe-guarapari-parece-cena-de-filme-2417842-article.jpg", type: "PÔR DO SOL", credit: "Evelize Calmon" }
-        ];
-        for (const s of initialSunset) {
-          await addDoc(collection(db, 'sunset_locations'), s);
-        }
-      }
-
-      // Seed Moqueca if empty
-      if (!moquecaRecipe) {
-        const initialMoqueca = {
-          title: "Moqueca Capixaba Tradicional",
-          description: "A moqueca capixaba é um prato típico do Espírito Santo, preparado sem leite de coco nem dendê...",
-          prepTime: "20 min",
-          cookTime: "40 min",
-          servings: "6 pessoas",
-          calories: "320 kcal",
-          ingredients: {
-            marinade: ["1,2 kg postas de peixe firme", "10 g sal", "5 g pimenta do reino", "40 g suco de limão"],
-            cooking: ["80 g azeite de oliva", "40 g azeite de urucum", "300 g cebola", "200 g tomate", "30 g alho", "50 g coentro", "20 g cebolinha"]
-          },
-          instructions: ["Tempere as postas...", "Aqueça o azeite...", "Frite o alho...", "Coloque as postas...", "Tampe a panela...", "Acrescente o coentro..."],
-          notes: ["Tradicionalmente servida com arroz branco e pirão.", "Peixe deve ser fresco.", "Uso da panela de barro é típico."],
-          image: "https://th.bing.com/th/id/R.cf064b34bd5a5cec1866ce029cf3de86?rik=W6sqI2x0OZ4uNw&riu=http%3a%2f%2fwww.portaltemponovo.com.br%2fwp-content%2fuploads%2f2015%2f09%2fmoqueca-capixaba1-641.jpg&ehk=GH25fQxmlrMj0zZW%2fHA2IcJXStY7YbH%2bAZLu5Rrt8wM%3d&risl=&pid=ImgRaw&r=0"
-        };
-        await addDoc(collection(db, 'moqueca_recipe'), initialMoqueca);
-      }
-
-      // Seed Experiences if empty
-      if (experiences.length === 0) {
-        const initialExp = [
-          { title: "Moqueca Capixaba", description: "O prato mais famoso do estado.", icon: "Utensils", color: "bg-orange-500" },
-          { title: "Passeio de Escuna", description: "Navegue pela baía de Vitória.", icon: "Waves", color: "bg-blue-500" },
-          { title: "Pôr do Sol no Canal", description: "Um espetáculo diário.", icon: "Sun", color: "bg-yellow-500" }
-        ];
-        for (const e of initialExp) {
-          await addDoc(collection(db, 'experiences'), e);
-        }
-      }
-
-      // Seed Hero if empty
-      if (!heroData) {
-        const initialHero = {
-          title: "Descubra a Magia de Vitória",
-          subtitle: "Bem-vindo ao Espírito Santo",
-          description: "Entre montanhas e o mar, a capital do Espírito Santo guarda segredos históricos...",
-          backgroundImage: "https://upload.wikimedia.org/wikipedia/commons/0/03/Convento_da_Penha_e_Terceira_Ponte_com_Mar_e_Vit%C3%B3ria_ao_fundo.jpg"
-        };
-        await addDoc(collection(db, 'hero_data'), initialHero);
-      }
-
       alert('Banco de dados populado com sucesso!');
     } catch (error) {
       console.error("Error seeding database:", error);
@@ -659,7 +403,12 @@ export default function AdminPanel({ onExit, initialTab }: { onExit: () => void,
     );
   }
 
-  if (!user) {
+  const isSuperAdmin = user && !user.isAnonymous && (
+    user.email === "pedroass.11577@gmail.com" || 
+    user.uid === "dC3g33pVLtThUTdPygKDfPPXLhe2"
+  );
+
+  if (!isSuperAdmin) {
     return (
       <motion.div 
         key="admin-login"
@@ -774,11 +523,6 @@ export default function AdminPanel({ onExit, initialTab }: { onExit: () => void,
           <nav className="hidden lg:flex items-center gap-1 bg-stone-100 p-1 rounded-xl">
             {[
               { id: 'roteiros', label: 'Roteiros', icon: <MapPin className="w-4 h-4" /> },
-              { id: 'quickPosts', label: 'Posts', icon: <ImageIcon className="w-4 h-4" /> },
-              { id: 'sunset', label: 'Sunset', icon: <Sun className="w-4 h-4" /> },
-              { id: 'moqueca', label: 'Moqueca', icon: <Utensils className="w-4 h-4" /> },
-              { id: 'experiences', label: 'Experiências', icon: <Sparkles className="w-4 h-4" /> },
-              { id: 'hero', label: 'Hero', icon: <LayoutGrid className="w-4 h-4" /> },
               { id: 'settings', label: 'Contatos', icon: <Phone className="w-4 h-4" /> },
             ].map(tab => (
               <button
@@ -817,11 +561,6 @@ export default function AdminPanel({ onExit, initialTab }: { onExit: () => void,
       <div className="lg:hidden bg-white border-b border-stone-200 px-4 py-2 overflow-x-auto flex gap-2 no-scrollbar">
         {[
           { id: 'roteiros', label: 'Roteiros' },
-          { id: 'quickPosts', label: 'Posts' },
-          { id: 'sunset', label: 'Sunset' },
-          { id: 'moqueca', label: 'Moqueca' },
-          { id: 'experiences', label: 'Exp' },
-          { id: 'hero', label: 'Hero' },
           { id: 'settings', label: 'Contatos' },
         ].map(tab => (
           <button
@@ -837,13 +576,23 @@ export default function AdminPanel({ onExit, initialTab }: { onExit: () => void,
       <main className="max-w-6xl mx-auto p-6 space-y-12">
         {activeTab === 'roteiros' && (
           <section>
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center justify-between mb-8">
               <h2 className="text-2xl font-bold text-stone-900 flex items-center gap-2">
                 <MapPin className="w-6 h-6 text-orange-600" /> Gerenciar Roteiros
               </h2>
               <button 
-                onClick={() => setEditingRoteiro({ title: '', subtitle: '', price: '', images: [], places: [], history: '', gastronomy: '', curiosities: '', courtesy: [], flyer: '', timeDeparture: '', timeReturn: '' })}
-                className="bg-orange-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-orange-700 transition-colors flex items-center gap-2 shadow-lg shadow-orange-600/20"
+                onClick={() => setEditingRoteiro({
+                  title: '',
+                  subtitle: '',
+                  price: '',
+                  images: [],
+                  places: [],
+                  history: '',
+                  gastronomy: '',
+                  curiosities: '',
+                  courtesy: []
+                })}
+                className="bg-orange-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-orange-700 transition-all shadow-lg shadow-orange-600/20 flex items-center gap-2"
               >
                 <Plus className="w-5 h-5" /> Novo Roteiro
               </button>
@@ -851,271 +600,44 @@ export default function AdminPanel({ onExit, initialTab }: { onExit: () => void,
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {roteiros.map(roteiro => (
-                <div key={roteiro.id} className="bg-white rounded-3xl overflow-hidden shadow-sm border border-stone-200 group">
-                  <div className="h-48 relative bg-stone-100">
+                <div key={roteiro.id} className="bg-white rounded-3xl overflow-hidden shadow-sm border border-stone-200 group hover:border-orange-200 transition-colors">
+                  <div className="h-48 relative">
                     <img 
                       src={roteiro.images[0]} 
                       alt={roteiro.title} 
                       className="w-full h-full object-cover"
-                      loading="lazy"
                       referrerPolicy="no-referrer"
                     />
-                    <div className="absolute top-4 right-4 flex gap-2">
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
                       <button 
                         onClick={() => setEditingRoteiro(roteiro)}
-                        className="bg-white/90 backdrop-blur-sm p-2 rounded-lg text-stone-600 hover:text-orange-600 transition-colors"
+                        className="bg-white text-stone-900 p-3 rounded-full hover:bg-orange-600 hover:text-white transition-all"
                       >
-                        <Edit className="w-4 h-4" />
+                        <Edit className="w-5 h-5" />
                       </button>
                       <button 
                         onClick={() => handleDeleteRoteiro(roteiro.id)}
-                        className="bg-white/90 backdrop-blur-sm p-2 rounded-lg text-stone-600 hover:text-red-600 transition-colors"
+                        className="bg-white text-red-600 p-3 rounded-full hover:bg-red-600 hover:text-white transition-all"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="w-5 h-5" />
                       </button>
                     </div>
                   </div>
                   <div className="p-6">
                     <span className="text-[10px] font-bold text-orange-600 uppercase tracking-widest mb-1 block">{roteiro.subtitle}</span>
                     <h3 className="font-bold text-stone-900 mb-2">{roteiro.title}</h3>
-                    <div className="flex items-center gap-2 mb-3 text-stone-400">
-                      <Clock className="w-3 h-3" />
-                      <span className="text-[10px] font-bold uppercase tracking-wider">
-                        {roteiro.timeDeparture && roteiro.timeReturn 
-                          ? `Ida: ${roteiro.timeDeparture} | Volta: ${roteiro.timeReturn}`
-                          : roteiro.time || 'Horário não definido'}
-                      </span>
-                    </div>
-                    <p className="text-sm text-stone-500 line-clamp-2 mb-4">{roteiro.history}</p>
-                    <div className="flex flex-col gap-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-stone-400">Geral:</span>
-                        <span className="font-bold text-stone-900">R$ {roteiro.price}</span>
-                      </div>
-                      {roteiro.priceCash && (
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-stone-400">À Vista:</span>
-                          <span className="font-bold text-green-600 text-sm">R$ {roteiro.priceCash}</span>
-                        </div>
-                      )}
-                      {roteiro.priceInstallment && (
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-stone-400">Parcelado:</span>
-                          <span className="font-bold text-orange-600 text-sm">R$ {roteiro.priceInstallment}</span>
-                        </div>
-                      )}
-                      <div className="flex items-center justify-end mt-2">
-                        <span className="text-[10px] text-stone-400 uppercase font-bold">{roteiro.places.length} locais</span>
+                    <p className="text-stone-500 text-xs line-clamp-2 mb-4">{roteiro.history}</p>
+                    <div className="flex items-center justify-between">
+                      <span className="text-lg font-bold text-stone-900">R$ {roteiro.price}</span>
+                      <div className="flex items-center gap-2 text-stone-400">
+                        <ImageIcon className="w-4 h-4" />
+                        <span className="text-xs font-bold">{roteiro.images.length}</span>
                       </div>
                     </div>
                   </div>
                 </div>
               ))}
             </div>
-          </section>
-        )}
-
-        {activeTab === 'quickPosts' && (
-          <section>
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-stone-900 flex items-center gap-2">
-                <ImageIcon className="w-6 h-6 text-orange-600" /> Posts Rápidos
-              </h2>
-              <button 
-                onClick={() => setEditingQuickPost({ image: '', description: '', comment: '' })}
-                className="bg-orange-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-orange-700 transition-colors flex items-center gap-2 shadow-lg shadow-orange-600/20"
-              >
-                <Plus className="w-5 h-5" /> Novo Post
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {quickPosts.map(post => (
-                <div key={post.id} className="bg-white rounded-3xl overflow-hidden shadow-sm border border-stone-200 group">
-                  <div className="aspect-square relative bg-stone-100">
-                    <img 
-                      src={post.image} 
-                      alt={post.description} 
-                      className="w-full h-full object-cover"
-                      loading="lazy"
-                      referrerPolicy="no-referrer"
-                    />
-                    <div className="absolute top-4 right-4 flex gap-2">
-                      <button 
-                        onClick={() => setEditingQuickPost(post)}
-                        className="bg-white/90 backdrop-blur-sm p-2 rounded-lg text-stone-600 hover:text-orange-600 transition-colors"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button 
-                        onClick={() => handleDeleteQuickPost(post.id)}
-                        className="bg-white/90 backdrop-blur-sm p-2 rounded-lg text-stone-600 hover:text-red-600 transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                  <div className="p-4">
-                    <p className="text-sm font-bold text-stone-900 line-clamp-1">{post.description}</p>
-                    <p className="text-xs text-stone-500 line-clamp-2 mt-1 italic">"{post.comment}"</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {activeTab === 'sunset' && (
-          <section>
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-stone-900 flex items-center gap-2">
-                <Sun className="w-6 h-6 text-orange-600" /> Guia do Pôr do Sol
-              </h2>
-              <button 
-                onClick={() => setEditingSunset({ title: '', image: '', type: 'NASCER DO SOL', credit: '' })}
-                className="bg-orange-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-orange-700 transition-colors flex items-center gap-2 shadow-lg shadow-orange-600/20"
-              >
-                <Plus className="w-5 h-5" /> Novo Local
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {sunsetLocations.map(loc => (
-                <div key={loc.id} className="bg-white rounded-3xl overflow-hidden shadow-sm border border-stone-200 group">
-                  <div className="aspect-video relative bg-stone-100">
-                    <img src={loc.image} alt={loc.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                    <div className="absolute top-4 right-4 flex gap-2">
-                      <button onClick={() => setEditingSunset(loc)} className="bg-white/90 backdrop-blur-sm p-2 rounded-lg text-stone-600 hover:text-orange-600"><Edit className="w-4 h-4" /></button>
-                      <button onClick={() => handleDeleteSunset(loc.id)} className="bg-white/90 backdrop-blur-sm p-2 rounded-lg text-stone-600 hover:text-red-600"><Trash2 className="w-4 h-4" /></button>
-                    </div>
-                    <div className="absolute bottom-4 left-4">
-                      <span className={`px-3 py-1 rounded-full text-[9px] font-bold text-white uppercase tracking-widest ${loc.type === 'NASCER DO SOL' ? 'bg-orange-500' : 'bg-blue-500'}`}>
-                        {loc.type}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="p-4">
-                    <h3 className="font-bold text-stone-900 text-sm">{loc.title}</h3>
-                    <p className="text-stone-400 text-[10px] uppercase font-bold tracking-widest mt-1">Crédito: {loc.credit}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {activeTab === 'moqueca' && (
-          <section>
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-stone-900 flex items-center gap-2">
-                <Utensils className="w-6 h-6 text-orange-600" /> Receita da Moqueca
-              </h2>
-              <button 
-                onClick={() => setEditingMoqueca(moquecaRecipe || { title: '', description: '', prepTime: '', cookTime: '', servings: '', calories: '', ingredients: { marinade: [], cooking: [] }, instructions: [], notes: [], image: '' })}
-                className="bg-orange-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-orange-700 transition-colors flex items-center gap-2 shadow-lg shadow-orange-600/20"
-              >
-                <Edit className="w-5 h-5" /> Editar Receita
-              </button>
-            </div>
-
-            {moquecaRecipe ? (
-              <div className="bg-white rounded-[2.5rem] overflow-hidden shadow-sm border border-stone-200 flex flex-col md:flex-row">
-                <div className="md:w-1/3 aspect-square md:aspect-auto relative">
-                  <img src={moquecaRecipe.image} alt={moquecaRecipe.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                </div>
-                <div className="md:w-2/3 p-8 md:p-12">
-                  <h3 className="text-3xl font-bold text-stone-900 mb-4">{moquecaRecipe.title}</h3>
-                  <p className="text-stone-500 mb-8 line-clamp-3 italic">"{moquecaRecipe.description}"</p>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                    <div className="bg-stone-50 p-4 rounded-2xl border border-stone-100 text-center">
-                      <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Preparo</p>
-                      <p className="font-bold text-stone-900">{moquecaRecipe.prepTime}</p>
-                    </div>
-                    <div className="bg-stone-50 p-4 rounded-2xl border border-stone-100 text-center">
-                      <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Cozimento</p>
-                      <p className="font-bold text-stone-900">{moquecaRecipe.cookTime}</p>
-                    </div>
-                    <div className="bg-stone-50 p-4 rounded-2xl border border-stone-100 text-center">
-                      <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Porções</p>
-                      <p className="font-bold text-stone-900">{moquecaRecipe.servings}</p>
-                    </div>
-                    <div className="bg-stone-50 p-4 rounded-2xl border border-stone-100 text-center">
-                      <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Calorias</p>
-                      <p className="font-bold text-stone-900">{moquecaRecipe.calories}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="bg-white rounded-3xl p-12 text-center border-2 border-dashed border-stone-200">
-                <p className="text-stone-400 font-medium">Nenhuma receita cadastrada.</p>
-              </div>
-            )}
-          </section>
-        )}
-
-        {activeTab === 'experiences' && (
-          <section>
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-stone-900 flex items-center gap-2">
-                <Sparkles className="w-6 h-6 text-orange-600" /> Experiências
-              </h2>
-              <button 
-                onClick={() => setEditingExperience({ title: '', description: '', icon: 'Sparkles', color: 'bg-orange-500' })}
-                className="bg-orange-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-orange-700 transition-colors flex items-center gap-2 shadow-lg shadow-orange-600/20"
-              >
-                <Plus className="w-5 h-5" /> Nova Experiência
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {experiences.map(exp => (
-                <div key={exp.id} className="bg-white rounded-3xl p-8 shadow-sm border border-stone-200 relative group">
-                  <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => setEditingExperience(exp)} className="p-2 text-stone-400 hover:text-orange-600"><Edit className="w-4 h-4" /></button>
-                    <button onClick={() => handleDeleteExperience(exp.id)} className="p-2 text-stone-400 hover:text-red-600"><Trash2 className="w-4 h-4" /></button>
-                  </div>
-                  <div className={`w-12 h-12 ${exp.color} rounded-2xl flex items-center justify-center text-white mb-6`}>
-                    <Sparkles className="w-6 h-6" />
-                  </div>
-                  <h3 className="text-xl font-bold text-stone-900 mb-2">{exp.title}</h3>
-                  <p className="text-stone-500 text-sm leading-relaxed">{exp.description}</p>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {activeTab === 'hero' && (
-          <section>
-            <h2 className="text-2xl font-bold text-stone-900 mb-6 flex items-center gap-2">
-              <LayoutGrid className="w-6 h-6 text-orange-600" /> Seção Hero (Início)
-            </h2>
-            
-            {heroData ? (
-              <div className="bg-white rounded-[2.5rem] overflow-hidden shadow-sm border border-stone-200">
-                <div className="h-64 relative">
-                  <img src={heroData.backgroundImage} alt="Hero Background" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-center p-8">
-                    <div>
-                      <span className="text-white/60 text-[10px] font-bold uppercase tracking-[0.2em] mb-2 block">{heroData.subtitle}</span>
-                      <h3 className="text-4xl font-bold text-white mb-4">{heroData.title}</h3>
-                      <p className="text-white/80 text-sm max-w-xl mx-auto line-clamp-2">{heroData.description}</p>
-                    </div>
-                  </div>
-                  <button 
-                    onClick={() => setEditingHero(heroData)}
-                    className="absolute bottom-6 right-6 bg-white text-stone-900 px-6 py-3 rounded-xl font-bold hover:bg-orange-600 hover:text-white transition-all flex items-center gap-2 shadow-xl"
-                  >
-                    <Edit className="w-4 h-4" /> Editar Hero
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="bg-white rounded-3xl p-12 text-center border-2 border-dashed border-stone-200">
-                <button onClick={() => setEditingHero({ title: '', subtitle: '', description: '', backgroundImage: '' })} className="text-orange-600 font-bold">Configurar Hero</button>
-              </div>
-            )}
           </section>
         )}
 
@@ -1440,313 +962,6 @@ export default function AdminPanel({ onExit, initialTab }: { onExit: () => void,
                 >
                   Salvar Roteiro
                 </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* Quick Post Edit Modal */}
-      <AnimatePresence>
-        {editingQuickPost && (
-          <div key="edit-quickpost-overlay" className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              className="bg-white rounded-[2.5rem] w-full max-w-lg p-8 md:p-12 shadow-2xl relative"
-            >
-              <button 
-                onClick={() => setEditingQuickPost(null)}
-                className="absolute top-8 right-8 text-stone-400 hover:text-stone-900"
-              >
-                <X className="w-8 h-8" />
-              </button>
-
-              <h3 className="text-3xl font-bold text-stone-900 mb-8">
-                {editingQuickPost.id ? 'Editar Post' : 'Novo Post Rápido'}
-              </h3>
-
-              <div className="space-y-6">
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-stone-400 uppercase tracking-widest">Foto do Post</label>
-                  <div className="flex flex-col gap-4">
-                    {editingQuickPost.image && (
-                      <div className="relative w-full aspect-video rounded-2xl overflow-hidden border border-stone-200 bg-stone-50">
-                        <img src={editingQuickPost.image} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                        <div className="absolute top-4 right-4 flex gap-2">
-                          <button 
-                            onClick={() => handleDownload(editingQuickPost.image!, 'post-image.jpg')}
-                            className="bg-white/90 backdrop-blur-sm text-stone-600 p-2 rounded-xl hover:bg-orange-500 hover:text-white transition-all shadow-lg"
-                            title="Baixar Imagem"
-                          >
-                            <Download className="w-5 h-5" />
-                          </button>
-                          <button 
-                            onClick={() => setEditingQuickPost({...editingQuickPost, image: ''})}
-                            className="bg-white/90 backdrop-blur-sm text-red-500 p-2 rounded-xl hover:bg-red-500 hover:text-white transition-all shadow-lg"
-                            title="Remover Imagem"
-                          >
-                            <Trash2 className="w-5 h-5" />
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                    <div className="flex gap-4">
-                      <label className="flex-1 h-16 rounded-2xl border-2 border-dashed border-stone-200 flex items-center justify-center gap-3 cursor-pointer hover:border-orange-500 hover:bg-orange-50 transition-all relative overflow-hidden">
-                        {uploading ? (
-                          <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm">
-                            <div className="flex items-center gap-2 mb-1">
-                              <Loader2 className="w-5 h-5 text-orange-600 animate-spin" />
-                              <span className="text-xs font-bold text-orange-600">{Math.round(uploadProgress)}%</span>
-                            </div>
-                            <div className="w-24 h-1 bg-stone-100 rounded-full overflow-hidden">
-                              <div className="h-full bg-orange-600 transition-all duration-300" style={{ width: `${uploadProgress}%` }} />
-                            </div>
-                          </div>
-                        ) : (
-                          <>
-                            <Upload className="w-6 h-6 text-stone-400" />
-                            <span className="text-xs font-bold text-stone-400 uppercase">Fazer Upload</span>
-                          </>
-                        )}
-                        <input 
-                          type="file" 
-                          accept="image/*" 
-                          className="hidden" 
-                          onChange={async (e) => {
-                            const file = e.target.files?.[0];
-                            if (file) {
-                              const url = await handleFileUpload(file, 'quick_posts');
-                              setEditingQuickPost({...editingQuickPost, image: url});
-                            }
-                          }}
-                          disabled={uploading}
-                        />
-                      </label>
-                      <div className="flex-1">
-                        <input 
-                          type="text" 
-                          value={editingQuickPost.image}
-                          onChange={e => setEditingQuickPost({...editingQuickPost, image: e.target.value})}
-                          className="w-full h-16 px-4 bg-stone-50 border border-stone-200 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none text-sm"
-                          placeholder="Ou cole a URL da foto"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-stone-400 uppercase tracking-widest">Descrição</label>
-                  <input 
-                    type="text" 
-                    value={editingQuickPost.description}
-                    onChange={e => setEditingQuickPost({...editingQuickPost, description: e.target.value})}
-                    className="w-full p-4 bg-stone-50 border border-stone-200 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none"
-                    placeholder="Ex: Passeio de Escuna em Guarapari"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-stone-400 uppercase tracking-widest">Comentário</label>
-                  <textarea 
-                    value={editingQuickPost.comment}
-                    onChange={e => setEditingQuickPost({...editingQuickPost, comment: e.target.value})}
-                    className="w-full p-4 bg-stone-50 border border-stone-200 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none h-32"
-                    placeholder="Ex: Um dia inesquecível com águas cristalinas!"
-                  />
-                </div>
-              </div>
-
-              <div className="mt-12 flex justify-end gap-4">
-                <button 
-                  onClick={() => setEditingQuickPost(null)}
-                  className="px-8 py-4 rounded-2xl font-bold text-stone-500 hover:bg-stone-50 transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button 
-                  onClick={handleSaveQuickPost}
-                  className="bg-orange-600 text-white px-12 py-4 rounded-2xl font-bold hover:bg-orange-700 transition-all shadow-xl shadow-orange-600/20"
-                >
-                  Salvar Post
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-
-        {editingSunset && (
-          <div key="edit-sunset-overlay" className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="bg-white rounded-[2.5rem] w-full max-w-lg p-8 md:p-12 shadow-2xl relative">
-              <button onClick={() => setEditingSunset(null)} className="absolute top-8 right-8 text-stone-400"><X className="w-8 h-8" /></button>
-              <h3 className="text-3xl font-bold text-stone-900 mb-8">{editingSunset.id ? 'Editar Local' : 'Novo Local do Sol'}</h3>
-              <div className="space-y-6">
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-stone-400 uppercase tracking-widest">Título</label>
-                  <input type="text" value={editingSunset.title} onChange={e => setEditingSunset({...editingSunset, title: e.target.value})} className="w-full p-4 bg-stone-50 border border-stone-200 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none" />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-stone-400 uppercase tracking-widest">Tipo</label>
-                  <select value={editingSunset.type} onChange={e => setEditingSunset({...editingSunset, type: e.target.value as any})} className="w-full p-4 bg-stone-50 border border-stone-200 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none">
-                    <option value="NASCER DO SOL">NASCER DO SOL</option>
-                    <option value="PÔR DO SOL">PÔR DO SOL</option>
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-stone-400 uppercase tracking-widest">Crédito da Foto</label>
-                  <input type="text" value={editingSunset.credit} onChange={e => setEditingSunset({...editingSunset, credit: e.target.value})} className="w-full p-4 bg-stone-50 border border-stone-200 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none" />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-stone-400 uppercase tracking-widest">Imagem (URL ou Upload)</label>
-                  <div className="flex gap-4">
-                    <label className="flex-1 h-12 rounded-xl border-2 border-dashed border-stone-200 flex items-center justify-center gap-2 cursor-pointer hover:border-orange-500 hover:bg-orange-50 transition-all relative overflow-hidden">
-                      {uploading ? <Loader2 className="w-4 h-4 text-orange-600 animate-spin" /> : <><Upload className="w-4 h-4 text-stone-400" /><span className="text-[10px] font-bold text-stone-400 uppercase">Upload</span></>}
-                      <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          const url = await handleFileUpload(file, 'sunset');
-                          setEditingSunset({...editingSunset, image: url});
-                        }
-                      }} disabled={uploading} />
-                    </label>
-                    <input type="text" value={editingSunset.image} onChange={e => setEditingSunset({...editingSunset, image: e.target.value})} className="flex-[2] p-3 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none text-xs" placeholder="URL da imagem" />
-                  </div>
-                </div>
-              </div>
-              <div className="mt-12 flex justify-end gap-4">
-                <button onClick={() => setEditingSunset(null)} className="px-8 py-4 rounded-2xl font-bold text-stone-500">Cancelar</button>
-                <button onClick={handleSaveSunset} className="bg-orange-600 text-white px-12 py-4 rounded-2xl font-bold hover:bg-orange-700 shadow-xl">Salvar</button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-
-        {editingExperience && (
-          <div key="edit-experience-overlay" className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="bg-white rounded-[2.5rem] w-full max-w-lg p-8 md:p-12 shadow-2xl relative">
-              <button onClick={() => setEditingExperience(null)} className="absolute top-8 right-8 text-stone-400"><X className="w-8 h-8" /></button>
-              <h3 className="text-3xl font-bold text-stone-900 mb-8">{editingExperience.id ? 'Editar Experiência' : 'Nova Experiência'}</h3>
-              <div className="space-y-6">
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-stone-400 uppercase tracking-widest">Título</label>
-                  <input type="text" value={editingExperience.title} onChange={e => setEditingExperience({...editingExperience, title: e.target.value})} className="w-full p-4 bg-stone-50 border border-stone-200 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none" />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-stone-400 uppercase tracking-widest">Descrição</label>
-                  <textarea value={editingExperience.description} onChange={e => setEditingExperience({...editingExperience, description: e.target.value})} className="w-full p-4 bg-stone-50 border border-stone-200 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none h-32" />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-stone-400 uppercase tracking-widest">Cor de Fundo (Tailwind Class)</label>
-                  <input type="text" value={editingExperience.color} onChange={e => setEditingExperience({...editingExperience, color: e.target.value})} className="w-full p-4 bg-stone-50 border border-stone-200 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none" placeholder="Ex: bg-orange-500" />
-                </div>
-              </div>
-              <div className="mt-12 flex justify-end gap-4">
-                <button onClick={() => setEditingExperience(null)} className="px-8 py-4 rounded-2xl font-bold text-stone-500">Cancelar</button>
-                <button onClick={handleSaveExperience} className="bg-orange-600 text-white px-12 py-4 rounded-2xl font-bold hover:bg-orange-700 shadow-xl">Salvar</button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-
-        {editingMoqueca && (
-          <div key="edit-moqueca-overlay" className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="bg-white rounded-[2.5rem] w-full max-w-4xl max-h-[90vh] overflow-y-auto p-8 md:p-12 shadow-2xl relative">
-              <button onClick={() => setEditingMoqueca(null)} className="absolute top-8 right-8 text-stone-400"><X className="w-8 h-8" /></button>
-              <h3 className="text-3xl font-bold text-stone-900 mb-8">Editar Receita da Moqueca</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="space-y-6">
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-stone-400 uppercase tracking-widest">Título</label>
-                    <input type="text" value={editingMoqueca.title} onChange={e => setEditingMoqueca({...editingMoqueca, title: e.target.value})} className="w-full p-4 bg-stone-50 border border-stone-200 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none" />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-stone-400 uppercase tracking-widest">Descrição</label>
-                    <textarea value={editingMoqueca.description} onChange={e => setEditingMoqueca({...editingMoqueca, description: e.target.value})} className="w-full p-4 bg-stone-50 border border-stone-200 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none h-24" />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2"><label className="text-xs font-bold text-stone-400 uppercase tracking-widest">Preparo</label><input type="text" value={editingMoqueca.prepTime} onChange={e => setEditingMoqueca({...editingMoqueca, prepTime: e.target.value})} className="w-full p-4 bg-stone-50 border border-stone-200 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none" /></div>
-                    <div className="space-y-2"><label className="text-xs font-bold text-stone-400 uppercase tracking-widest">Cozimento</label><input type="text" value={editingMoqueca.cookTime} onChange={e => setEditingMoqueca({...editingMoqueca, cookTime: e.target.value})} className="w-full p-4 bg-stone-50 border border-stone-200 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none" /></div>
-                    <div className="space-y-2"><label className="text-xs font-bold text-stone-400 uppercase tracking-widest">Porções</label><input type="text" value={editingMoqueca.servings} onChange={e => setEditingMoqueca({...editingMoqueca, servings: e.target.value})} className="w-full p-4 bg-stone-50 border border-stone-200 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none" /></div>
-                    <div className="space-y-2"><label className="text-xs font-bold text-stone-400 uppercase tracking-widest">Calorias</label><input type="text" value={editingMoqueca.calories} onChange={e => setEditingMoqueca({...editingMoqueca, calories: e.target.value})} className="w-full p-4 bg-stone-50 border border-stone-200 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none" /></div>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-stone-400 uppercase tracking-widest">Imagem (URL ou Upload)</label>
-                    <div className="flex gap-4">
-                      <label className="flex-1 h-12 rounded-xl border-2 border-dashed border-stone-200 flex items-center justify-center gap-2 cursor-pointer hover:border-orange-500 hover:bg-orange-50 transition-all relative overflow-hidden">
-                        {uploading ? <Loader2 className="w-4 h-4 text-orange-600 animate-spin" /> : <><Upload className="w-4 h-4 text-stone-400" /><span className="text-[10px] font-bold text-stone-400 uppercase">Upload</span></>}
-                        <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            const url = await handleFileUpload(file, 'moqueca');
-                            setEditingMoqueca({...editingMoqueca, image: url});
-                          }
-                        }} disabled={uploading} />
-                      </label>
-                      <input type="text" value={editingMoqueca.image} onChange={e => setEditingMoqueca({...editingMoqueca, image: e.target.value})} className="flex-[2] p-3 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none text-xs" placeholder="URL da imagem" />
-                    </div>
-                  </div>
-                </div>
-                <div className="space-y-6">
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-stone-400 uppercase tracking-widest">Ingredientes - Marinada (Um por linha)</label>
-                    <textarea value={editingMoqueca.ingredients.marinade.join('\n')} onChange={e => setEditingMoqueca({...editingMoqueca, ingredients: {...editingMoqueca.ingredients, marinade: e.target.value.split('\n').filter(l => l.trim())}})} className="w-full p-4 bg-stone-50 border border-stone-200 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none h-32" />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-stone-400 uppercase tracking-widest">Ingredientes - Cozimento (Um por linha)</label>
-                    <textarea value={editingMoqueca.ingredients.cooking.join('\n')} onChange={e => setEditingMoqueca({...editingMoqueca, ingredients: {...editingMoqueca.ingredients, cooking: e.target.value.split('\n').filter(l => l.trim())}})} className="w-full p-4 bg-stone-50 border border-stone-200 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none h-32" />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-stone-400 uppercase tracking-widest">Instruções (Uma por linha)</label>
-                    <textarea value={editingMoqueca.instructions.join('\n')} onChange={e => setEditingMoqueca({...editingMoqueca, instructions: e.target.value.split('\n').filter(l => l.trim())})} className="w-full p-4 bg-stone-50 border border-stone-200 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none h-32" />
-                  </div>
-                </div>
-              </div>
-              <div className="mt-12 flex justify-end gap-4">
-                <button onClick={() => setEditingMoqueca(null)} className="px-8 py-4 rounded-2xl font-bold text-stone-500">Cancelar</button>
-                <button onClick={handleSaveMoqueca} className="bg-orange-600 text-white px-12 py-4 rounded-2xl font-bold hover:bg-orange-700 shadow-xl">Salvar Receita</button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-
-        {editingHero && (
-          <div key="edit-hero-overlay" className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="bg-white rounded-[2.5rem] w-full max-w-lg p-8 md:p-12 shadow-2xl relative">
-              <button onClick={() => setEditingHero(null)} className="absolute top-8 right-8 text-stone-400"><X className="w-8 h-8" /></button>
-              <h3 className="text-3xl font-bold text-stone-900 mb-8">Editar Seção Hero</h3>
-              <div className="space-y-6">
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-stone-400 uppercase tracking-widest">Título Principal</label>
-                  <input type="text" value={editingHero.title} onChange={e => setEditingHero({...editingHero, title: e.target.value})} className="w-full p-4 bg-stone-50 border border-stone-200 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none" />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-stone-400 uppercase tracking-widest">Subtítulo</label>
-                  <input type="text" value={editingHero.subtitle} onChange={e => setEditingHero({...editingHero, subtitle: e.target.value})} className="w-full p-4 bg-stone-50 border border-stone-200 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none" />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-stone-400 uppercase tracking-widest">Descrição</label>
-                  <textarea value={editingHero.description} onChange={e => setEditingHero({...editingHero, description: e.target.value})} className="w-full p-4 bg-stone-50 border border-stone-200 rounded-2xl focus:ring-2 focus:ring-orange-500 outline-none h-24" />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-stone-400 uppercase tracking-widest">Imagem de Fundo (URL ou Upload)</label>
-                  <div className="flex gap-4">
-                    <label className="flex-1 h-12 rounded-xl border-2 border-dashed border-stone-200 flex items-center justify-center gap-2 cursor-pointer hover:border-orange-500 hover:bg-orange-50 transition-all relative overflow-hidden">
-                      {uploading ? <Loader2 className="w-4 h-4 text-orange-600 animate-spin" /> : <><Upload className="w-4 h-4 text-stone-400" /><span className="text-[10px] font-bold text-stone-400 uppercase">Upload</span></>}
-                      <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          const url = await handleFileUpload(file, 'hero');
-                          setEditingHero({...editingHero, backgroundImage: url});
-                        }
-                      }} disabled={uploading} />
-                    </label>
-                    <input type="text" value={editingHero.backgroundImage} onChange={e => setEditingHero({...editingHero, backgroundImage: e.target.value})} className="flex-[2] p-3 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none text-xs" placeholder="URL da imagem" />
-                  </div>
-                </div>
-              </div>
-              <div className="mt-12 flex justify-end gap-4">
-                <button onClick={() => setEditingHero(null)} className="px-8 py-4 rounded-2xl font-bold text-stone-500">Cancelar</button>
-                <button onClick={handleSaveHero} className="bg-orange-600 text-white px-12 py-4 rounded-2xl font-bold hover:bg-orange-700 shadow-xl">Salvar Hero</button>
               </div>
             </motion.div>
           </div>

@@ -10,34 +10,24 @@ import { collection, getDocs, addDoc, query, orderBy, updateDoc, doc, onSnapshot
 import { signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import AdminPanel from './components/AdminPanel';
 import { 
+  Utensils, 
   MapPin, 
-  Map,
-  Navigation, 
   Camera, 
   Image as ImageIcon,
-  Utensils, 
-  Waves, 
-  Sun, 
   ChevronRight, 
-  Instagram, 
-  Facebook, 
-  Twitter,
   Menu,
   X,
   ArrowRight,
   MessageCircle,
-  Info,
   BookOpen,
-  Coffee,
-  Sparkles,
-  Car,
-  IdCard,
   Clock,
-  Users,
-  Flame,
-  ChefHat,
   Download,
-  Plus
+  Plus,
+  Instagram,
+  Facebook,
+  Twitter,
+  IdCard,
+  Sparkles
 } from 'lucide-react';
 
 const INITIAL_ROTEIROS = [
@@ -153,276 +143,6 @@ const INITIAL_ROTEIROS = [
     curiosities: "A cidade é pioneira no agroturismo no Brasil, transformando a rotina das fazendas em uma experiência turística única."
   }
 ];
-
-function SunsetModal({ onClose, locations }: { onClose: () => void, locations: any[], key?: string }) {
-  return (
-    <motion.div 
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
-      onClick={onClose}
-    >
-      <motion.div 
-        initial={{ scale: 0.9, y: 20 }}
-        animate={{ scale: 1, y: 0 }}
-        exit={{ scale: 0.9, y: 20 }}
-        className="bg-white rounded-[2.5rem] w-full max-w-5xl max-h-[90vh] overflow-hidden shadow-2xl flex flex-col"
-        onClick={e => e.stopPropagation()}
-      >
-        <div className="relative h-48 md:h-64 shrink-0 bg-stone-900 flex items-center justify-center overflow-hidden">
-          <img 
-            src="https://midias.agazeta.com.br/2024/09/09/por-do-sol-da-ilha-das-caieiras--2417643-article.jpg"
-            className="absolute inset-0 w-full h-full object-cover opacity-50 blur-sm"
-            alt="Background"
-            onError={(e) => {
-              const target = e.target as HTMLImageElement;
-              target.src = "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&q=80&w=1000";
-            }}
-          />
-          <div className="relative z-10 text-center px-8">
-            <span className="bg-orange-600 text-white px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest mb-3 inline-block">
-              Guia de Contemplação
-            </span>
-            <h2 className="text-2xl md:text-4xl font-bold text-white mb-2">Onde ver o nascer e pôr do sol na Grande Vitória?</h2>
-            <p className="text-white/80 text-sm md:text-base max-w-2xl mx-auto">Veja lista com 10 locais mágicos para acompanhar esse momento da natureza.</p>
-          </div>
-          <button 
-            onClick={onClose}
-            className="absolute top-6 right-6 bg-white/20 backdrop-blur-md hover:bg-white/40 text-white p-2 rounded-full transition-colors z-20"
-          >
-            <X className="w-6 h-6" />
-          </button>
-        </div>
-
-        <div className="p-8 md:p-12 overflow-y-auto">
-          <div className="mb-12 flex flex-col md:flex-row md:items-center justify-between gap-6 pb-8 border-b border-stone-100">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-stone-100 flex items-center justify-center text-stone-400">
-                <Users className="w-6 h-6" />
-              </div>
-              <div>
-                <p className="text-sm font-bold text-stone-900">Felipe Khoury</p>
-                <p className="text-xs text-stone-400">Repórter / fkhoury@redegazeta.com.br</p>
-              </div>
-            </div>
-            <div className="text-right">
-              <p className="text-xs text-stone-400 uppercase font-bold tracking-widest">Publicado em</p>
-              <p className="text-sm font-bold text-stone-900">15 de setembro de 2024 às 10:00</p>
-            </div>
-          </div>
-
-          <div className="mb-12">
-            <p className="text-stone-600 leading-relaxed mb-6">
-              Se temos uma certeza na vida é de que o sol nasce - e se põe - para todos. Por isso, não é à toa que muita gente procura lugares e pontos estratégicos para acompanhar esse momento mágico da natureza. Seja na praia ou nas montanhas, é possível sentir essa energia de vários cantinhos do Estado.
-            </p>
-            <p className="text-stone-600 leading-relaxed">
-              Entre pontos famosos, como o Morro do Moreno e o Convento da Penha, até alguns menos explorados, como ‘cantinhos’ em Meaípe e Manguinhos, preparamos uma lista para inspirar você a curtir o início e final de um dia ensolarado.
-            </p>
-          </div>
-
-          <div className="space-y-16">
-            <div>
-              <h3 className="text-2xl font-bold text-stone-900 mb-8 flex items-center gap-3">
-                <Sun className="w-6 h-6 text-orange-500" /> NASCER DO SOL
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {locations.filter(l => l.type === "NASCER DO SOL").map(loc => (
-                  <div key={loc.title} className="group">
-                    <div className="aspect-video rounded-3xl overflow-hidden mb-4 shadow-lg bg-stone-100">
-                      <img 
-                        src={loc.image} 
-                        alt={loc.title} 
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                        referrerPolicy="no-referrer"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.src = `https://picsum.photos/seed/${loc.title}/800/450`;
-                        }}
-                      />
-                    </div>
-                    <h4 className="font-bold text-stone-900 mb-1">{loc.title}</h4>
-                    <p className="text-[10px] text-stone-400 uppercase font-bold tracking-widest">Crédito: {loc.credit}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <h3 className="text-2xl font-bold text-stone-900 mb-8 flex items-center gap-3">
-                <Waves className="w-6 h-6 text-blue-500" /> PÔR DO SOL
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {locations.filter(l => l.type === "PÔR DO SOL").map(loc => (
-                  <div key={loc.title} className="group">
-                    <div className="aspect-video rounded-3xl overflow-hidden mb-4 shadow-lg bg-stone-100">
-                      <img 
-                        src={loc.image} 
-                        alt={loc.title} 
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                        referrerPolicy="no-referrer"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.src = `https://picsum.photos/seed/${loc.title}/800/450`;
-                        }}
-                      />
-                    </div>
-                    <h4 className="font-bold text-stone-900 mb-1">{loc.title}</h4>
-                    <p className="text-[10px] text-stone-400 uppercase font-bold tracking-widest">Crédito: {loc.credit}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </motion.div>
-    </motion.div>
-  );
-}
-
-function MoquecaModal({ onClose, recipe }: { onClose: () => void, recipe: any, key?: string }) {
-  if (!recipe) return null;
-
-  return (
-    <motion.div 
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
-      onClick={onClose}
-    >
-      <motion.div 
-        initial={{ scale: 0.9, y: 20 }}
-        animate={{ scale: 1, y: 0 }}
-        exit={{ scale: 0.9, y: 20 }}
-        className="bg-white rounded-[2.5rem] w-full max-w-4xl max-h-[90vh] overflow-hidden shadow-2xl flex flex-col"
-        onClick={e => e.stopPropagation()}
-      >
-        <div className="relative h-64 md:h-96 shrink-0">
-          <img 
-            src={recipe.image} 
-            alt={recipe.title}
-            className="w-full h-full object-cover"
-            referrerPolicy="no-referrer"
-            onError={(e) => {
-              const target = e.target as HTMLImageElement;
-              target.src = "https://images.unsplash.com/photo-1551024709-8f23befc6f87?auto=format&fit=crop&q=80&w=1000";
-            }}
-          />
-          <button 
-            onClick={onClose}
-            className="absolute top-6 right-6 bg-white/20 backdrop-blur-md hover:bg-white/40 text-white p-2 rounded-full transition-colors z-10"
-          >
-            <X className="w-6 h-6" />
-          </button>
-          <div className="absolute inset-0 bg-gradient-to-t from-white via-transparent to-transparent" />
-          <div className="absolute bottom-6 left-8 right-8">
-            <span className="bg-orange-600 text-white px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest mb-2 inline-block">
-              Receita Tradicional
-            </span>
-            <h2 className="text-3xl md:text-5xl font-bold text-stone-900">{recipe.title}</h2>
-          </div>
-        </div>
-
-        <div className="p-8 md:p-12 overflow-y-auto">
-          <div className="mb-10">
-            <p className="text-stone-600 text-lg leading-relaxed italic border-l-4 border-orange-500 pl-6">
-              "{recipe.description}"
-            </p>
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-12">
-            <div className="bg-stone-50 p-4 rounded-2xl border border-stone-100 flex flex-col items-center text-center">
-              <Clock className="w-5 h-5 text-orange-600 mb-2" />
-              <span className="text-[10px] text-stone-400 uppercase font-bold tracking-widest mb-1">Preparação</span>
-              <span className="text-sm font-bold text-stone-900">{recipe.prepTime}</span>
-            </div>
-            <div className="bg-stone-50 p-4 rounded-2xl border border-stone-100 flex flex-col items-center text-center">
-              <Flame className="w-5 h-5 text-orange-600 mb-2" />
-              <span className="text-[10px] text-stone-400 uppercase font-bold tracking-widest mb-1">Cozimento</span>
-              <span className="text-sm font-bold text-stone-900">{recipe.cookTime}</span>
-            </div>
-            <div className="bg-stone-50 p-4 rounded-2xl border border-stone-100 flex flex-col items-center text-center">
-              <Users className="w-5 h-5 text-orange-600 mb-2" />
-              <span className="text-[10px] text-stone-400 uppercase font-bold tracking-widest mb-1">Porções</span>
-              <span className="text-sm font-bold text-stone-900">{recipe.servings}</span>
-            </div>
-            <div className="bg-stone-50 p-4 rounded-2xl border border-stone-100 flex flex-col items-center text-center">
-              <ChefHat className="w-5 h-5 text-orange-600 mb-2" />
-              <span className="text-[10px] text-stone-400 uppercase font-bold tracking-widest mb-1">Calorias</span>
-              <span className="text-sm font-bold text-stone-900">{recipe.calories}</span>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-            <div>
-              <h3 className="text-xl font-bold text-stone-900 mb-6 flex items-center gap-2">
-                <Utensils className="w-5 h-5 text-orange-600" /> Ingredientes
-              </h3>
-              
-              <div className="space-y-8">
-                {recipe.ingredients.marinade && recipe.ingredients.marinade.length > 0 && (
-                  <div>
-                    <h4 className="text-sm font-black text-orange-600 uppercase tracking-widest mb-4">Peixe e Marinada</h4>
-                    <ul className="space-y-3">
-                      {recipe.ingredients.marinade.map((item: string) => (
-                        <li key={item} className="flex items-start gap-3 text-stone-600 text-sm">
-                          <div className="w-1.5 h-1.5 rounded-full bg-stone-300 mt-1.5 shrink-0" />
-                          {item}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {recipe.ingredients.cooking && recipe.ingredients.cooking.length > 0 && (
-                  <div>
-                    <h4 className="text-sm font-black text-orange-600 uppercase tracking-widest mb-4">Refogado e Montagem</h4>
-                    <ul className="space-y-3">
-                      {recipe.ingredients.cooking.map((item: string) => (
-                        <li key={item} className="flex items-start gap-3 text-stone-600 text-sm">
-                          <div className="w-1.5 h-1.5 rounded-full bg-stone-300 mt-1.5 shrink-0" />
-                          {item}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div>
-              <h3 className="text-xl font-bold text-stone-900 mb-6 flex items-center gap-2">
-                <ChefHat className="w-5 h-5 text-orange-600" /> Instruções
-              </h3>
-              <ul className="space-y-6">
-                {recipe.instructions.map((step: string, i: number) => (
-                  <li key={i} className="flex gap-4">
-                    <span className="flex items-center justify-center w-6 h-6 rounded-full bg-orange-100 text-orange-600 text-xs font-bold shrink-0">
-                      {i + 1}
-                    </span>
-                    <p className="text-stone-600 text-sm leading-relaxed">{step}</p>
-                  </li>
-                ))}
-              </ul>
-
-              {recipe.notes && recipe.notes.length > 0 && (
-                <div className="mt-12 p-6 bg-orange-50 rounded-3xl border border-orange-100">
-                  <h4 className="text-xs font-black text-orange-600 uppercase tracking-widest mb-3">Notas do Chef</h4>
-                  <ul className="space-y-2">
-                    {recipe.notes.map((note: string) => (
-                      <li key={note} className="text-xs text-orange-800 leading-relaxed">• {note}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </motion.div>
-    </motion.div>
-  );
-}
 
 function FadeInImage({ src, alt, className, loading = "lazy" }: { src: string, alt: string, className?: string, loading?: "lazy" | "eager" }) {
   const [loaded, setLoaded] = useState(false);
@@ -659,27 +379,6 @@ function RoteiroImage({ roteiro }: { roteiro: any }) {
   );
 }
 
-const experiences = [
-  {
-    title: "Moqueca Capixaba",
-    description: "O prato mais famoso do estado. 'Moqueca é capixaba, o resto é peixada'.",
-    icon: <Utensils className="w-6 h-6" />,
-    color: "bg-orange-500"
-  },
-  {
-    title: "Passeio de Escuna",
-    description: "Navegue pela baía de Vitória e descubra a cidade por um novo ângulo.",
-    icon: <Waves className="w-6 h-6" />,
-    color: "bg-blue-500"
-  },
-  {
-    title: "Pôr do Sol no Canal",
-    description: "Um espetáculo diário que colore o céu de Vitória em tons de dourado.",
-    icon: <Sun className="w-6 h-6" />,
-    color: "bg-yellow-500"
-  }
-];
-
 function BookingModal({ isOpen, onClose, roteiroTitle, contactInfo }: { isOpen: boolean, onClose: () => void, roteiroTitle: string, contactInfo: any, key?: string }) {
   const [name, setName] = useState('');
   const [date, setDate] = useState('');
@@ -785,18 +484,10 @@ export default function App() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [selectedRoteiro, setSelectedRoteiro] = useState<any>(null);
-  const [showMoquecaRecipe, setShowMoquecaRecipe] = useState(false);
-  const [showSunsetGuide, setShowSunsetGuide] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<'roteiros' | 'quickPosts'>('roteiros');
-  const [adminTab, setAdminTab] = useState<'roteiros' | 'quickPosts' | 'sunset' | 'moqueca' | 'experiences' | 'hero' | 'settings'>('roteiros');
+  const [adminTab, setAdminTab] = useState<'roteiros' | 'settings'>('roteiros');
   const [roteiros, setRoteiros] = useState<any[]>([]);
-  const [quickPosts, setQuickPosts] = useState<any[]>([]);
-  const [sunsetLocations, setSunsetLocations] = useState<any[]>([]);
-  const [moquecaRecipe, setMoquecaRecipe] = useState<any>(null);
-  const [experiences, setExperiences] = useState<any[]>([]);
-  const [heroData, setHeroData] = useState<any>(null);
   const [contactInfo, setContactInfo] = useState<any>({
     phone: '5527998597568',
     whatsapp: '5527998597568',
@@ -863,40 +554,6 @@ export default function App() {
       if (roteiros.length === 0) setRoteiros(INITIAL_ROTEIROS);
     });
 
-    const unsubQuickPosts = onSnapshot(query(collection(db, 'quick_posts'), orderBy('createdAt', 'desc')), (snapshot) => {
-      setQuickPosts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    }, (error) => {
-      handleFirestoreError(error, OperationType.GET, 'quick_posts');
-    });
-
-    const unsubSunset = onSnapshot(collection(db, 'sunset_locations'), (snapshot) => {
-      setSunsetLocations(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    }, (error) => {
-      handleFirestoreError(error, OperationType.GET, 'sunset_locations');
-    });
-
-    const unsubMoqueca = onSnapshot(collection(db, 'moqueca_recipe'), (snapshot) => {
-      if (!snapshot.empty) {
-        setMoquecaRecipe({ id: snapshot.docs[0].id, ...snapshot.docs[0].data() });
-      }
-    }, (error) => {
-      handleFirestoreError(error, OperationType.GET, 'moqueca_recipe');
-    });
-
-    const unsubExperiences = onSnapshot(collection(db, 'experiences'), (snapshot) => {
-      setExperiences(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    }, (error) => {
-      handleFirestoreError(error, OperationType.GET, 'experiences');
-    });
-
-    const unsubHero = onSnapshot(collection(db, 'hero_data'), (snapshot) => {
-      if (!snapshot.empty) {
-        setHeroData({ id: snapshot.docs[0].id, ...snapshot.docs[0].data() });
-      }
-    }, (error) => {
-      handleFirestoreError(error, OperationType.GET, 'hero_data');
-    });
-
     const unsubSettings = onSnapshot(collection(db, 'settings'), (snapshot) => {
       if (!snapshot.empty) {
         setContactInfo(snapshot.docs[0].data());
@@ -909,11 +566,6 @@ export default function App() {
 
     return () => {
       unsubRoteiros();
-      unsubQuickPosts();
-      unsubSunset();
-      unsubMoqueca();
-      unsubExperiences();
-      unsubHero();
       unsubSettings();
     };
   }, [isAuth]);
@@ -977,7 +629,7 @@ export default function App() {
 
           {/* Desktop Nav */}
           <div className="hidden md:flex items-center gap-8">
-            {['Roteiros', 'Experiências', 'Gastronomia', 'Sobre'].map((item) => (
+            {['Roteiros'].map((item) => (
               <a 
                 key={item} 
                 href={`#${item.toLowerCase()}`} 
@@ -1021,7 +673,7 @@ export default function App() {
             className="fixed inset-0 z-40 bg-white pt-24 px-6 md:hidden"
           >
             <div className="flex flex-col gap-6">
-              {['Roteiros', 'Experiências', 'Gastronomia', 'Sobre'].map((item) => (
+              {['Roteiros'].map((item) => (
                 <a 
                   key={item} 
                   href={`#${item.toLowerCase()}`} 
@@ -1057,86 +709,10 @@ export default function App() {
             onDownload={handleDownload}
           />
         )}
-        {showMoquecaRecipe && (
-          <MoquecaModal key="moqueca-modal" onClose={() => setShowMoquecaRecipe(false)} recipe={moquecaRecipe} />
-        )}
-        {showSunsetGuide && (
-          <SunsetModal key="sunset-modal" onClose={() => setShowSunsetGuide(false)} locations={sunsetLocations} />
-        )}
       </AnimatePresence>
 
-      {/* Hero Section */}
-      <section className="relative h-screen flex items-center justify-center overflow-hidden">
-        <div className="absolute inset-0 z-0">
-          <img 
-            src={heroData?.backgroundImage || "https://upload.wikimedia.org/wikipedia/commons/0/03/Convento_da_Penha_e_Terceira_Ponte_com_Mar_e_Vit%C3%B3ria_ao_fundo.jpg"} 
-            alt="Hero Background" 
-            className="w-full h-full object-cover scale-105 animate-slow-zoom"
-            referrerPolicy="no-referrer"
-            loading="eager"
-            onError={(e) => {
-              const target = e.target as HTMLImageElement;
-              target.src = "https://images.unsplash.com/photo-1582650625119-3a31f8fa2699?auto=format&fit=crop&q=60&w=1920";
-            }}
-          />
-          <div className="absolute inset-0 bg-black/40" />
-        </div>
-
-        <div className="relative z-10 text-center px-6 max-w-4xl">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-          >
-            <span className="inline-block px-4 py-1.5 bg-white/10 backdrop-blur-md border border-white/20 rounded-full text-white text-xs font-bold uppercase tracking-widest mb-6">
-              {heroData?.subtitle || "Bem-vindo ao Espírito Santo"}
-            </span>
-            <h1 className="text-5xl md:text-8xl font-bold text-white mb-8 tracking-tighter leading-[0.9]">
-              {heroData?.title ? (
-                heroData.title.split(' ').map((word: string, i: number) => (
-                  <React.Fragment key={i}>
-                    {word === 'Vitória' ? <span className="text-orange-400">{word}</span> : word}{' '}
-                  </React.Fragment>
-                ))
-              ) : (
-                <>Descubra a Magia de <span className="text-orange-400">Vitória</span></>
-              )}
-            </h1>
-            <p className="text-lg md:text-xl text-white/80 mb-10 max-w-2xl mx-auto font-light leading-relaxed">
-              {heroData?.description || "Entre montanhas e o mar, a capital do Espírito Santo guarda segredos históricos, praias paradisíacas e a melhor gastronomia do Brasil."}
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <a 
-                href="#roteiros"
-                className="bg-white text-stone-900 px-8 py-4 rounded-full font-bold hover:bg-orange-50 transition-all flex items-center justify-center gap-2 group"
-              >
-                Explorar Roteiros
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-              </a>
-              <a 
-                href={`https://wa.me/${contactInfo.whatsapp}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="bg-transparent border border-white/30 backdrop-blur-sm text-white px-8 py-4 rounded-full font-bold hover:bg-white/10 transition-all"
-              >
-                Falar com Guia
-              </a>
-            </div>
-          </motion.div>
-        </div>
-
-        {/* Scroll Indicator */}
-        <motion.div 
-          animate={{ y: [0, 10, 0] }}
-          transition={{ repeat: Infinity, duration: 2 }}
-          className="absolute bottom-10 left-1/2 -translate-x-1/2 text-white/50 flex flex-col items-center gap-2"
-        >
-          <span className="text-[10px] uppercase tracking-widest font-bold">Scroll</span>
-          <div className="w-px h-12 bg-gradient-to-b from-white/50 to-transparent" />
-        </motion.div>
-      </section>
-
-      {/* Guide Safety Banner */}
+      <div className="pt-24">
+        {/* Guide Safety Banner */}
       <section className="bg-orange-600 py-6 px-6">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-center gap-4 text-white text-center md:text-left">
           <div className="p-3 bg-white/20 rounded-full">
@@ -1154,482 +730,140 @@ export default function App() {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16 relative">
             <span className="text-orange-600 font-bold text-xs uppercase tracking-[0.3em] mb-4 block">
-              {viewMode === 'roteiros' ? 'Planeje sua Aventura' : 'Momentos Reais'}
+              Planeje sua Aventura
             </span>
             <h2 className="text-4xl md:text-5xl font-bold text-stone-900 tracking-tight">
-              {viewMode === 'roteiros' ? 'Roteiros Exclusivos' : 'Posts Rápidos'}
+              Roteiros Exclusivos
             </h2>
             <p className="text-stone-500 mt-4 max-w-2xl mx-auto">
-              {viewMode === 'roteiros' 
-                ? 'Escolha um de nossos roteiros cuidadosamente planejados para você aproveitar o melhor do Espírito Santo com conforto e segurança.'
-                : 'Confira fotos reais de nossos últimos passeios e sinta a energia de cada destino.'}
+              Escolha um de nossos roteiros cuidadosamente planejados para você aproveitar o melhor do Espírito Santo com conforto e segurança.
             </p>
 
-            {/* Modern Toggle Control */}
-            <div className="mt-12 flex justify-center">
-              <div className="bg-white p-1.5 rounded-full shadow-xl border border-stone-100 flex items-center relative">
-                <motion.div
-                  layoutId="active-toggle"
-                  className="absolute bg-orange-600 rounded-full h-[calc(100%-12px)] z-0"
-                  initial={false}
-                  animate={{
-                    left: viewMode === 'roteiros' ? '6px' : '50%',
-                    width: 'calc(50% - 6px)'
-                  }}
-                  transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                />
-                <button 
-                  onClick={() => setViewMode('roteiros')}
-                  className={`relative z-10 px-8 py-3 rounded-full text-xs font-bold uppercase tracking-widest transition-colors duration-300 flex items-center gap-2 ${viewMode === 'roteiros' ? 'text-white' : 'text-stone-400 hover:text-stone-600'}`}
-                >
-                  <Map className="w-4 h-4" />
-                  Roteiros
-                </button>
-                <button 
-                  onClick={() => setViewMode('quickPosts')}
-                  className={`relative z-10 px-8 py-3 rounded-full text-xs font-bold uppercase tracking-widest transition-colors duration-300 flex items-center gap-2 ${viewMode === 'quickPosts' ? 'text-white' : 'text-stone-400 hover:text-stone-600'}`}
-                >
-                  <ImageIcon className="w-4 h-4" />
-                  Posts Rápidos
-                </button>
-              </div>
+            <div className="mt-8 flex justify-center">
+              <button 
+                onClick={() => {
+                  setAdminTab('roteiros');
+                  setShowAdmin(true);
+                }}
+                className="bg-stone-900 text-white px-8 py-3 rounded-full text-xs font-bold uppercase tracking-widest hover:bg-orange-600 transition-all shadow-xl shadow-black/10 flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                Novo Roteiro
+              </button>
             </div>
-
-            {viewMode === 'quickPosts' ? (
-              <div className="mt-8 flex justify-center">
-                <button 
-                  onClick={() => {
-                    setAdminTab('quickPosts');
-                    setShowAdmin(true);
-                  }}
-                  className="bg-stone-900 text-white px-8 py-3 rounded-full text-xs font-bold uppercase tracking-widest hover:bg-orange-600 transition-all shadow-xl shadow-black/10 flex items-center gap-2"
-                >
-                  <Plus className="w-4 h-4" />
-                  Novo Post
-                </button>
-              </div>
-            ) : (
-              <div className="mt-8 flex justify-center">
-                <button 
-                  onClick={() => {
-                    setAdminTab('roteiros');
-                    setShowAdmin(true);
-                  }}
-                  className="bg-stone-900 text-white px-8 py-3 rounded-full text-xs font-bold uppercase tracking-widest hover:bg-orange-600 transition-all shadow-xl shadow-black/10 flex items-center gap-2"
-                >
-                  <Plus className="w-4 h-4" />
-                  Novo Roteiro
-                </button>
-              </div>
-            )}
           </div>
 
           <AnimatePresence mode="wait">
-            {viewMode === 'roteiros' ? (
-              <motion.div 
-                key="roteiros-grid"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
-                className="grid grid-cols-1 lg:grid-cols-2 gap-12"
-              >
-                {roteiros.map((roteiro, index) => (
-                  <motion.div 
-                    key={roteiro.id}
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    whileInView={{ opacity: 1, scale: 1 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: index * 0.1 }}
-                    onClick={() => setSelectedRoteiro(roteiro)}
-                    className="bg-white rounded-[2.5rem] overflow-hidden shadow-xl border border-stone-100 flex flex-col md:flex-row group cursor-pointer hover:border-orange-200 transition-colors"
-                  >
-                    <RoteiroImage roteiro={roteiro} />
-                    <div className="md:w-3/5 p-6 md:p-10 flex flex-col justify-between relative bg-white">
-                      <div className="absolute top-4 right-4 md:top-6 md:right-8 z-20">
-                        <span className="flex items-center gap-1 text-[9px] md:text-[10px] font-bold text-[#00c853] uppercase tracking-widest bg-[#e8f5e9] px-3 py-1.5 md:px-4 md:py-2 rounded-full border border-[#c8e6c9] shadow-sm">
-                          <IdCard className="w-3 h-3 md:w-3.5 md:h-3.5" /> GUIA CREDENCIADO
-                        </span>
-                      </div>
-                      
-                      <div className="mt-8 md:mt-4">
-                        <div className="mb-6">
-                          <h3 className="text-2xl md:text-3xl font-bold text-[#1c1917] leading-tight whitespace-nowrap overflow-hidden text-ellipsis">{roteiro.title}</h3>
-                          {roteiro.timeDeparture && roteiro.timeReturn ? (
-                            <div className="flex items-center gap-2 mt-2 text-stone-500">
-                              <Clock className="w-4 h-4 text-orange-600" />
-                              <span className="text-xs md:text-[11px] font-bold uppercase tracking-wider">Ida: {roteiro.timeDeparture} | Volta: {roteiro.timeReturn}</span>
-                            </div>
-                          ) : roteiro.time && (
-                            <div className="flex items-center gap-2 mt-2 text-stone-500">
-                              <Clock className="w-4 h-4 text-orange-600" />
-                              <span className="text-xs md:text-sm font-bold uppercase tracking-wider">{roteiro.time}</span>
-                            </div>
-                          )}
-                        </div>
-                        
-                        <div className="mb-8">
-                          <h4 className="text-[10px] md:text-[11px] font-black text-stone-400 uppercase tracking-widest mb-4">O QUE VOCÊ VAI VISITAR:</h4>
-                          <div className="flex flex-wrap gap-2">
-                            {roteiro.places.slice(0, 4).map(place => (
-                              <span key={place} className="bg-[#f5f5f5] text-stone-600 px-3 py-2 md:px-4 md:py-2 rounded-xl text-[10px] md:text-[11px] font-bold">
-                                {place}
-                              </span>
-                            ))}
-                            {roteiro.places.length > 4 && (
-                              <span className="text-[10px] md:text-[11px] text-stone-400 font-bold py-2 ml-1">+{roteiro.places.length - 4} LOCAIS</span>
-                            )}
+            <motion.div 
+              key="roteiros-grid"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="grid grid-cols-1 lg:grid-cols-2 gap-12"
+            >
+              {roteiros.map((roteiro, index) => (
+                <motion.div 
+                  key={roteiro.id}
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  whileInView={{ opacity: 1, scale: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: index * 0.1 }}
+                  onClick={() => setSelectedRoteiro(roteiro)}
+                  className="bg-white rounded-[2.5rem] overflow-hidden shadow-xl border border-stone-100 flex flex-col md:flex-row group cursor-pointer hover:border-orange-200 transition-colors"
+                >
+                  <RoteiroImage roteiro={roteiro} />
+                  <div className="md:w-3/5 p-6 md:p-10 flex flex-col justify-between relative bg-white">
+                    <div className="absolute top-4 right-4 md:top-6 md:right-8 z-20">
+                      <span className="flex items-center gap-1 text-[9px] md:text-[10px] font-bold text-[#00c853] uppercase tracking-widest bg-[#e8f5e9] px-3 py-1.5 md:px-4 md:py-2 rounded-full border border-[#c8e6c9] shadow-sm">
+                        <IdCard className="w-3 h-3 md:w-3.5 md:h-3.5" /> GUIA CREDENCIADO
+                      </span>
+                    </div>
+                    
+                    <div className="mt-8 md:mt-4">
+                      <div className="mb-6">
+                        <h3 className="text-2xl md:text-3xl font-bold text-[#1c1917] leading-tight whitespace-nowrap overflow-hidden text-ellipsis">{roteiro.title}</h3>
+                        {roteiro.timeDeparture && roteiro.timeReturn ? (
+                          <div className="flex items-center gap-2 mt-2 text-stone-500">
+                            <Clock className="w-4 h-4 text-orange-600" />
+                            <span className="text-xs md:text-[11px] font-bold uppercase tracking-wider">Ida: {roteiro.timeDeparture} | Volta: {roteiro.timeReturn}</span>
                           </div>
-                        </div>
-                        
-                        <button 
-                          onClick={() => setSelectedRoteiro(roteiro)}
-                          className="text-[#ff4500] font-black text-xs md:text-sm flex items-center gap-2 hover:gap-3 transition-all mb-8 group/link"
-                        >
-                          Ver História e Detalhes 
-                          <ChevronRight className="w-4 h-4 md:w-5 md:h-5 group-hover/link:translate-x-1 transition-transform" />
-                        </button>
-                      </div>
-
-                      <div className="mb-6 flex flex-col border-t border-stone-100 pt-6 gap-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] md:text-[11px] font-black text-stone-400 uppercase tracking-widest">Valor do Investimento</span>
-                          <div className="flex items-baseline gap-1 whitespace-nowrap">
-                            <span className="text-sm md:text-base font-black text-[#ff4500]">R$</span>
-                            <span className="text-2xl md:text-3xl font-black text-[#ff4500]">{roteiro.price}</span>
-                          </div>
-                        </div>
-                        
-                        {(roteiro.priceCash || roteiro.priceInstallment) && (
-                          <div className="flex flex-col gap-1 bg-stone-50 p-3 rounded-xl border border-stone-100">
-                            {roteiro.priceCash && (
-                              <div className="flex items-center justify-between">
-                                <span className="text-[9px] font-bold text-stone-500 uppercase tracking-widest">À Vista:</span>
-                                <span className="text-sm font-black text-green-600">R$ {roteiro.priceCash}</span>
-                              </div>
-                            )}
-                            {roteiro.priceInstallment && (
-                              <div className="flex items-center justify-between">
-                                <span className="text-[9px] font-bold text-stone-500 uppercase tracking-widest">Parcelado:</span>
-                                <span className="text-sm font-black text-orange-600">R$ {roteiro.priceInstallment}</span>
-                              </div>
-                            )}
+                        ) : roteiro.time && (
+                          <div className="flex items-center gap-2 mt-2 text-stone-500">
+                            <Clock className="w-4 h-4 text-orange-600" />
+                            <span className="text-xs md:text-sm font-bold uppercase tracking-wider">{roteiro.time}</span>
                           </div>
                         )}
                       </div>
-
-                      <button 
-                        onClick={() => {
-                          setBookingRoteiro(roteiro);
-                          setIsBookingModalOpen(true);
-                        }}
-                        className="w-full bg-[#1c1917] text-white py-4 md:py-5 rounded-[1.25rem] md:rounded-[1.5rem] font-black hover:bg-[#ff4500] transition-all flex items-center justify-center gap-3 group/btn shadow-xl shadow-black/10"
-                      >
-                        <span className="text-sm md:text-base">Reservar Agora</span>
-                        <ArrowRight className="w-4 h-4 md:w-5 md:h-5 group-hover/btn:translate-x-1 transition-transform" />
-                      </button>
-                    </div>
-                  </motion.div>
-                ))}
-              </motion.div>
-            ) : (
-              <motion.div 
-                key="quick-posts-grid"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8"
-              >
-                {quickPosts.length > 0 ? (
-                  quickPosts.map((post, index) => (
-                    <motion.div 
-                      key={post.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      whileInView={{ opacity: 1, y: 0 }}
-                      viewport={{ once: true }}
-                      transition={{ delay: index * 0.05 }}
-                      className="bg-white rounded-[2rem] overflow-hidden shadow-lg border border-stone-100 group flex flex-col"
-                    >
-                      <div className="aspect-[4/5] relative overflow-hidden">
-                        <FadeInImage 
-                          src={post.image} 
-                          alt={post.description} 
-                          className="w-full h-full transition-transform duration-700 group-hover:scale-110"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-6">
-                          <button 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDownload(post.image, `post-${post.id}.jpg`);
-                            }}
-                            className="absolute top-4 right-4 bg-white/20 hover:bg-white/40 text-white p-2 rounded-xl backdrop-blur-md transition-all flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest"
-                          >
-                            <Download className="w-4 h-4" />
-                            Baixar
-                          </button>
-                          <p className="text-white text-xs font-medium leading-relaxed italic">
-                            "{post.comment}"
-                          </p>
+                      
+                      <div className="mb-8">
+                        <h4 className="text-[10px] md:text-[11px] font-black text-stone-400 uppercase tracking-widest mb-4">O QUE VOCÊ VAI VISITAR:</h4>
+                        <div className="flex flex-wrap gap-2">
+                          {roteiro.places.slice(0, 4).map(place => (
+                            <span key={place} className="bg-[#f5f5f5] text-stone-600 px-3 py-2 md:px-4 md:py-2 rounded-xl text-[10px] md:text-[11px] font-bold">
+                              {place}
+                            </span>
+                          ))}
+                          {roteiro.places.length > 4 && (
+                            <span className="text-[10px] md:text-[11px] text-stone-400 font-bold py-2 ml-1">+{roteiro.places.length - 4} LOCAIS</span>
+                          )}
                         </div>
                       </div>
-                      <div className="p-6">
-                        <h3 className="font-bold text-stone-900 text-lg mb-2">{post.description}</h3>
-                        <p className="text-stone-500 text-sm italic">"{post.comment}"</p>
+                      
+                      <button 
+                        onClick={() => setSelectedRoteiro(roteiro)}
+                        className="text-[#ff4500] font-black text-xs md:text-sm flex items-center gap-2 hover:gap-3 transition-all mb-8 group/link"
+                      >
+                        Ver História e Detalhes 
+                        <ChevronRight className="w-4 h-4 md:w-5 md:h-5 group-hover/link:translate-x-1 transition-transform" />
+                      </button>
+                    </div>
+
+                    <div className="mb-6 flex flex-col border-t border-stone-100 pt-6 gap-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] md:text-[11px] font-black text-stone-400 uppercase tracking-widest">Valor do Investimento</span>
+                        <div className="flex items-baseline gap-1 whitespace-nowrap">
+                          <span className="text-sm md:text-base font-black text-[#ff4500]">R$</span>
+                          <span className="text-2xl md:text-3xl font-black text-[#ff4500]">{roteiro.price}</span>
+                        </div>
                       </div>
-                    </motion.div>
-                  ))
-                ) : (
-                  <div className="col-span-full py-20 text-center">
-                    <ImageIcon className="w-12 h-12 text-stone-200 mx-auto mb-4" />
-                    <p className="text-stone-400 font-medium">Nenhum post rápido ainda.</p>
+                      
+                      {(roteiro.priceCash || roteiro.priceInstallment) && (
+                        <div className="flex flex-col gap-1 bg-stone-50 p-3 rounded-xl border border-stone-100">
+                          {roteiro.priceCash && (
+                            <div className="flex items-center justify-between">
+                              <span className="text-[9px] font-bold text-stone-500 uppercase tracking-widest">À Vista:</span>
+                              <span className="text-sm font-black text-green-600">R$ {roteiro.priceCash}</span>
+                            </div>
+                          )}
+                          {roteiro.priceInstallment && (
+                            <div className="flex items-center justify-between">
+                              <span className="text-[9px] font-bold text-stone-500 uppercase tracking-widest">Parcelado:</span>
+                              <span className="text-sm font-black text-orange-600">R$ {roteiro.priceInstallment}</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    <button 
+                      onClick={() => {
+                        setBookingRoteiro(roteiro);
+                        setIsBookingModalOpen(true);
+                      }}
+                      className="w-full bg-[#1c1917] text-white py-4 md:py-5 rounded-[1.25rem] md:rounded-[1.5rem] font-black hover:bg-[#ff4500] transition-all flex items-center justify-center gap-3 group/btn shadow-xl shadow-black/10"
+                    >
+                      <span className="text-sm md:text-base">Reservar Agora</span>
+                      <ArrowRight className="w-4 h-4 md:w-5 md:h-5 group-hover/btn:translate-x-1 transition-transform" />
+                    </button>
                   </div>
-                )}
-              </motion.div>
-            )}
+                </motion.div>
+              ))}
+            </motion.div>
           </AnimatePresence>
         </div>
       </section>
 
-      {/* Instagram Section */}
-      <section className="py-24 px-6 bg-stone-100 overflow-hidden">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-            <motion.div
-              initial={{ opacity: 0, x: -50 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              className="relative"
-            >
-              <span className="text-orange-500 font-bold tracking-widest uppercase text-sm mb-4 block">Siga-nos</span>
-              <h2 className="text-5xl md:text-6xl font-serif text-stone-900 mb-8 leading-tight">
-                Acompanhe nossas <br />
-                <span className="italic">aventuras diárias</span>
-              </h2>
-              <p className="text-xl text-stone-600 mb-10 max-w-lg">
-                Fique por dentro de novos roteiros, dicas exclusivas e as melhores paisagens do Espírito Santo em tempo real.
-              </p>
-              <a 
-                href="https://www.instagram.com/city_tour_es/" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-3 bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 text-white px-10 py-5 rounded-full font-bold hover:scale-105 transition-all shadow-2xl shadow-pink-500/20"
-              >
-                <Instagram size={24} />
-                Acessar Instagram
-              </a>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 100 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="relative flex justify-center"
-            >
-              {/* Phone Mockup */}
-              <div className="relative w-[300px] h-[600px] bg-stone-900 rounded-[3rem] border-[8px] border-stone-800 shadow-2xl overflow-hidden">
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-stone-800 rounded-b-2xl z-20" />
-                <div className="absolute inset-0 z-10">
-                  <FadeInImage 
-                    src="https://i.imgur.com/72VAfVe.png" 
-                    alt="Instagram Preview" 
-                    className="w-full h-full"
-                  />
-                </div>
-              </div>
-              
-              {/* Decorative Elements */}
-              <div className="absolute -z-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-orange-200/50 rounded-full blur-3xl" />
-              <div className="absolute -z-10 top-1/4 right-0 w-32 h-32 bg-purple-200/50 rounded-full blur-2xl" />
-            </motion.div>
-          </div>
-        </div>
-      </section>
-
-      {/* Gastronomy Highlight */}
-      <section id="gastronomia" className="py-24 px-6 max-w-7xl mx-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-          <motion.div
-            initial={{ opacity: 0, x: -30 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            className="relative"
-          >
-            <div className="aspect-square rounded-[3rem] overflow-hidden shadow-2xl">
-              <FadeInImage 
-                src="https://images.unsplash.com/photo-1551024709-8f23befc6f87?auto=format&fit=crop&q=60&w=800" 
-                alt="Moqueca Capixaba" 
-                className="w-full h-full"
-              />
-            </div>
-            <div className="absolute -bottom-8 -right-8 bg-white p-8 rounded-3xl shadow-xl max-w-[240px] hidden md:block">
-              <div className="flex gap-1 mb-2">
-                {[1,2,3,4,5].map(i => <Sun key={i} className="w-4 h-4 fill-orange-500 text-orange-500" />)}
-              </div>
-              <p className="text-stone-900 font-bold italic text-lg leading-tight mb-2">
-                "A melhor moqueca que já provei na vida!"
-              </p>
-              <p className="text-stone-400 text-xs font-medium uppercase tracking-wider">— Crítico Gastronômico</p>
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, x: 30 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-          >
-            <span className="text-orange-600 font-bold text-xs uppercase tracking-[0.3em] mb-4 block">Sabor Autêntico</span>
-            <h2 className="text-4xl md:text-5xl font-bold text-stone-900 mb-8 tracking-tight leading-tight">
-              Uma viagem pelo paladar <br /> das montanhas ao mar.
-            </h2>
-            <p className="text-stone-600 text-lg leading-relaxed mb-10">
-              A culinária capixaba é uma mistura rica de influências indígenas, africanas e europeias. Nossa moqueca, preparada em tradicionais panelas de barro de Goiabeiras, é um patrimônio cultural que você não pode deixar de experimentar.
-            </p>
-            <div className="grid grid-cols-2 gap-8 mb-10">
-              <div>
-                <h4 className="font-bold text-stone-900 mb-2">Panelas de Barro</h4>
-                <p className="text-sm text-stone-500">Artesanato secular reconhecido pelo IPHAN.</p>
-              </div>
-              <div>
-                <h4 className="font-bold text-stone-900 mb-2">Frutos do Mar</h4>
-                <p className="text-sm text-stone-500">Ingredientes frescos pescados diariamente.</p>
-              </div>
-            </div>
-            <button 
-              onClick={() => setShowMoquecaRecipe(true)}
-              className="bg-stone-900 text-white px-10 py-4 rounded-full font-bold hover:bg-stone-800 transition-all shadow-xl shadow-stone-900/20"
-            >
-              Guia Gastronômico
-            </button>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Fleet Section */}
-      <section className="py-24 px-6 bg-white">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <span className="text-orange-600 font-bold text-xs uppercase tracking-[0.3em] mb-4 block">Nossa Frota</span>
-            <h2 className="text-4xl md:text-5xl font-bold text-stone-900 tracking-tight">Veículos para sua Viagem</h2>
-            <p className="text-stone-500 mt-4 max-w-2xl mx-auto">
-              Contamos com veículos modernos e confortáveis para garantir a melhor experiênia em seus passeios.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="bg-stone-50 rounded-[2.5rem] overflow-hidden border border-stone-100 group"
-            >
-              <div className="h-64 overflow-hidden">
-                <FadeInImage 
-                  src="https://th.bing.com/th/id/R.0ad79dd8d3412fd581d478ec14806169?rik=tmqoKvlw%2fAwtCA&riu=http%3a%2f%2fcdni.autocarindia.com%2fGalleries%2f20171116073907_virz3.jpg&ehk=zsyEGZpnVZTWR7OhYszlyECrRRxRMTaCJSWRzTLWEcM%3d&risl=&pid=ImgRaw&r=0" 
-                  alt="WV VIRTUS" 
-                  className="w-full h-full group-hover:scale-110 transition-transform duration-500"
-                />
-              </div>
-              <div className="p-8">
-                <div className="flex items-center gap-3 text-orange-600 mb-4">
-                  <Car className="w-5 h-5" />
-                  <h4 className="font-bold uppercase text-xs tracking-widest">Passeios Executivos</h4>
-                </div>
-                <h3 className="text-2xl font-bold text-stone-900 mb-2">WV VIRTUS</h3>
-                <p className="text-stone-600 text-sm leading-relaxed">Ideal para passeios privativos e executivos de poucas pessoas, oferecendo máximo conforto e sofisticação.</p>
-              </div>
-            </motion.div>
-
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.2 }}
-              className="bg-stone-50 rounded-[2.5rem] overflow-hidden border border-stone-100 group"
-            >
-              <div className="h-64 overflow-hidden">
-                <FadeInImage 
-                  src="https://irmaosbelfort.com.br/vans/van1.jpg" 
-                  alt="Van Executiva" 
-                  className="w-full h-full group-hover:scale-110 transition-transform duration-500"
-                />
-              </div>
-              <div className="p-8">
-                <div className="flex items-center gap-3 text-orange-600 mb-4">
-                  <Car className="w-5 h-5" />
-                  <h4 className="font-bold uppercase text-xs tracking-widest">Passeios em Grupo</h4>
-                </div>
-                <h3 className="text-2xl font-bold text-stone-900 mb-2">Van Executiva</h3>
-                <p className="text-stone-600 text-sm leading-relaxed">Perfeita para grupos maiores, garantindo que todos viajem juntos com segurança, espaço e ar-condicionado.</p>
-              </div>
-            </motion.div>
-          </div>
-        </div>
-      </section>
-
-      {/* Experience Section */}
-      <section id="experiências" className="bg-stone-900 py-24 px-6 overflow-hidden relative">
-        {/* Background Elements */}
-        <div className="absolute top-0 right-0 w-96 h-96 bg-orange-600/10 rounded-full blur-3xl -mr-48 -mt-48" />
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl -ml-48 -mb-48" />
-
-        <div className="max-w-7xl mx-auto relative z-10">
-          <div className="text-center mb-20">
-            <span className="text-orange-500 font-bold text-xs uppercase tracking-[0.3em] mb-4 block">Experiências Únicas</span>
-            <h2 className="text-4xl md:text-6xl font-bold text-white tracking-tight">Viva o Espírito Capixaba</h2>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {(experiences.length > 0 ? experiences : [
-              {
-                title: "Moqueca Capixaba",
-                description: "O prato mais famoso do estado. 'Moqueca é capixaba, o resto é peixada'.",
-                icon: <Utensils className="w-6 h-6" />,
-                color: "bg-orange-500"
-              },
-              {
-                title: "Passeio de Escuna",
-                description: "Navegue pela baía de Vitória e descubra a cidade por um novo ângulo.",
-                icon: <Waves className="w-6 h-6" />,
-                color: "bg-blue-500"
-              },
-              {
-                title: "Pôr do Sol no Canal",
-                description: "Um espetáculo diário que colore o céu de Vitória em tons de dourado.",
-                icon: <Sun className="w-6 h-6" />,
-                color: "bg-yellow-500"
-              }
-            ]).map((exp, index) => (
-              <motion.div 
-                key={exp.title}
-                initial={{ opacity: 0, scale: 0.95 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.2 }}
-                className="bg-white/5 border border-white/10 p-10 rounded-[2.5rem] backdrop-blur-sm hover:bg-white/10 transition-all group"
-              >
-                <div className={`${exp.color} w-14 h-14 rounded-2xl flex items-center justify-center text-white mb-8 shadow-lg shadow-orange-600/20 group-hover:scale-110 transition-transform`}>
-                  {exp.icon === 'Utensils' ? <Utensils className="w-6 h-6" /> : 
-                   exp.icon === 'Waves' ? <Waves className="w-6 h-6" /> :
-                   exp.icon === 'Sun' ? <Sun className="w-6 h-6" /> :
-                   typeof exp.icon === 'string' ? <Sparkles className="w-6 h-6" /> : exp.icon}
-                </div>
-                <h3 className="text-2xl font-bold text-white mb-4">{exp.title}</h3>
-                <p className="text-white/60 leading-relaxed mb-8">
-                  {exp.description}
-                </p>
-                <button 
-                  onClick={() => {
-                    if (exp.title === "Moqueca Capixaba") setShowMoquecaRecipe(true);
-                    if (exp.title === "Pôr do Sol no Canal") setShowSunsetGuide(true);
-                  }}
-                  className="text-white font-semibold flex items-center gap-2 group-hover:text-orange-500 transition-colors"
-                >
-                  Saiba mais <ArrowRight className="w-4 h-4" />
-                </button>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
+    </div>
 
       {/* Footer */}
       <footer className="bg-stone-50 border-t border-stone-200 pt-24 pb-12 px-6">
@@ -1665,9 +899,9 @@ export default function App() {
             <div>
               <h4 className="font-bold text-stone-900 mb-8 uppercase text-xs tracking-widest">Navegação</h4>
               <ul className="flex flex-col gap-4">
-                {['Destinos', 'Experiências', 'Gastronomia', 'Roteiros', 'Blog'].map(item => (
+                {['Roteiros'].map(item => (
                   <li key={item}>
-                    <a href="#" className="text-sm text-stone-500 hover:text-orange-600 transition-colors">{item}</a>
+                    <a href={`#${item.toLowerCase()}`} className="text-sm text-stone-500 hover:text-orange-600 transition-colors">{item}</a>
                   </li>
                 ))}
               </ul>
