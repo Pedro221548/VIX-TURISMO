@@ -221,6 +221,12 @@ function RoteiroModal({ roteiro, onClose, contactInfo, onDownload }: { roteiro: 
               {roteiro.subtitle}
             </span>
             <h2 className="text-3xl md:text-4xl font-display font-black text-stone-900">{roteiro.title}</h2>
+            {roteiro.vehicle && (
+              <div className="flex items-center gap-2 mt-2 text-stone-500">
+                <MapPin className="w-4 h-4 text-orange-600" />
+                <span className="text-xs md:text-sm font-bold uppercase tracking-wider">Veículo: {roteiro.vehicle}</span>
+              </div>
+            )}
             {roteiro.timeDeparture && roteiro.timeReturn ? (
               <div className="flex items-center gap-2 mt-2 text-stone-500">
                 <Clock className="w-4 h-4 text-orange-600" />
@@ -316,7 +322,7 @@ function RoteiroModal({ roteiro, onClose, contactInfo, onDownload }: { roteiro: 
                 <span className="text-xs text-stone-400 block uppercase font-bold tracking-widest mb-1">Investimento Geral</span>
                 <div className="flex items-baseline gap-1">
                   <span className="text-3xl font-bold text-orange-600">R$ {roteiro.price}</span>
-                  <span className="text-sm font-medium text-stone-400">/pessoa</span>
+                  <span className="text-sm font-medium text-stone-400">/4 pessoas</span>
                 </div>
               </div>
               {(roteiro.priceCash || roteiro.priceInstallment) && (
@@ -924,6 +930,12 @@ export default function App() {
                     <div className="mt-8 md:mt-4">
                       <div className="mb-6">
                         <h3 className="text-2xl md:text-3xl font-display font-black text-[#1c1917] leading-tight whitespace-nowrap overflow-hidden text-ellipsis">{roteiro.title}</h3>
+                        {roteiro.vehicle && (
+                          <div className="flex items-center gap-2 mt-2 text-stone-500">
+                            <MapPin className="w-4 h-4 text-orange-600" />
+                            <span className="text-xs md:text-[11px] font-bold uppercase tracking-wider">Veículo: {roteiro.vehicle}</span>
+                          </div>
+                        )}
                         {roteiro.timeDeparture && roteiro.timeReturn ? (
                           <div className="flex items-center gap-2 mt-2 text-stone-500">
                             <Clock className="w-4 h-4 text-orange-600" />
@@ -966,7 +978,7 @@ export default function App() {
                         <div className="flex items-baseline gap-1 whitespace-nowrap">
                           <span className="text-sm md:text-base font-black text-[#ff4500]">R$</span>
                           <span className="text-2xl md:text-3xl font-black text-[#ff4500]">{roteiro.price}</span>
-                          <span className="text-xs font-medium text-stone-400 ml-1">/pessoa</span>
+                          <span className="text-xs font-medium text-stone-400 ml-1">/4 pessoas</span>
                         </div>
                       </div>
                       

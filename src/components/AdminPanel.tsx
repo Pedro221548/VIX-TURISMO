@@ -367,7 +367,7 @@ export default function AdminPanel({ onClose, initialTab = 'roteiros' }: { onClo
                       <input type="text" value={editingRoteiro.subtitle} onChange={e => setEditingRoteiro({...editingRoteiro, subtitle: e.target.value})} className="w-full border rounded-lg px-3 py-2" required />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-stone-400 uppercase mb-1">Preço Base (por pessoa)</label>
+                      <label className="block text-xs font-bold text-stone-400 uppercase mb-1">Preço Base (4 PESSOAS)</label>
                       <input type="text" value={editingRoteiro.price} onChange={e => setEditingRoteiro({...editingRoteiro, price: e.target.value})} className="w-full border rounded-lg px-3 py-2" required placeholder="Ex: 150,00" />
                     </div>
                     <div>
@@ -377,6 +377,19 @@ export default function AdminPanel({ onClose, initialTab = 'roteiros' }: { onClo
                     <div>
                       <label className="block text-xs font-bold text-stone-400 uppercase mb-1">Preço Parcelado (por pessoa)</label>
                       <input type="text" value={editingRoteiro.priceInstallment || ''} onChange={e => setEditingRoteiro({...editingRoteiro, priceInstallment: e.target.value})} className="w-full border rounded-lg px-3 py-2" placeholder="Ex: 3x de 55,00" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-stone-400 uppercase mb-1">Veículo (Frota)</label>
+                      <select 
+                        value={editingRoteiro.vehicle || ''} 
+                        onChange={e => setEditingRoteiro({...editingRoteiro, vehicle: e.target.value})} 
+                        className="w-full border rounded-lg px-3 py-2 bg-white"
+                      >
+                        <option value="">Selecione um veículo...</option>
+                        {frota.map(v => (
+                          <option key={v.id || v.title} value={v.title}>{v.title}</option>
+                        ))}
+                      </select>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <div>
