@@ -30,6 +30,7 @@ import {
   Sparkles,
   Settings,
   ShieldCheck,
+  Car,
   Heart,
   Coffee,
   Check
@@ -292,6 +293,23 @@ function RoteiroModal({ roteiro, onClose, contactInfo, onDownload }: { roteiro: 
                     <span className="text-sm text-stone-700 font-bold">{item}</span>
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {roteiro.vehicle && (
+            <div className="mb-12">
+              <h4 className="font-bold text-stone-900 mb-6 flex items-center gap-2">
+                <Car className="w-5 h-5 text-orange-600" /> Veículo Utilizado
+              </h4>
+              <div className="p-4 bg-stone-50 rounded-2xl border border-stone-100 flex items-center gap-4">
+                <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center text-orange-600">
+                  <ShieldCheck className="w-6 h-6" />
+                </div>
+                <div>
+                  <span className="text-sm font-bold text-stone-900 block">{roteiro.vehicle}</span>
+                  <span className="text-xs text-stone-500">Veículo executivo com ar-condicionado e seguro passageiro</span>
+                </div>
               </div>
             </div>
           )}
@@ -1018,6 +1036,50 @@ export default function App() {
         </div>
       </section>
 
+      {/* Gallery Section */}
+      <section id="galeria" className="py-24 px-6 bg-white">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <span className="text-orange-600 font-bold text-xs uppercase tracking-[0.3em] mb-4 block">
+              Nossos Registros
+            </span>
+            <h2 className="text-4xl md:text-5xl font-display font-black text-stone-900 tracking-tight">
+              Galeria de Momentos
+            </h2>
+            <p className="text-stone-500 mt-4 max-w-2xl mx-auto">
+              Confira alguns dos momentos inesquecíveis registrados em nossos roteiros pelo Espírito Santo.
+            </p>
+          </div>
+
+          <div className="columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
+            {gallery.map((item, index) => (
+              <motion.div
+                key={item.id || `gallery-${index}`}
+                initial={{ opacity: 0, scale: 0.9 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ delay: index * 0.05 }}
+                className="break-inside-avoid rounded-3xl overflow-hidden border border-stone-100 shadow-sm hover:shadow-xl transition-all duration-500 group"
+              >
+                <img 
+                  src={item.url} 
+                  alt="Gallery" 
+                  className="w-full h-auto object-cover transition-transform duration-700 group-hover:scale-110"
+                  referrerPolicy="no-referrer"
+                />
+              </motion.div>
+            ))}
+          </div>
+
+          {gallery.length === 0 && (
+            <div className="text-center py-20 bg-stone-50 rounded-[3rem] border border-dashed border-stone-200">
+              <ImageIcon className="w-12 h-12 text-stone-300 mx-auto mb-4" />
+              <p className="text-stone-400 font-medium">Em breve, novas fotos aqui!</p>
+            </div>
+          )}
+        </div>
+      </section>
+
       {/* Fleet Section */}
       <section id="frota" className="py-24 px-6 bg-white">
         <div className="max-w-7xl mx-auto">
@@ -1072,50 +1134,6 @@ export default function App() {
       </section>
 
     </div>
-
-      {/* Gallery Section */}
-      <section id="galeria" className="py-24 px-6 bg-white">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <span className="text-orange-600 font-bold text-xs uppercase tracking-[0.3em] mb-4 block">
-              Nossos Registros
-            </span>
-            <h2 className="text-4xl md:text-5xl font-display font-black text-stone-900 tracking-tight">
-              Galeria de Momentos
-            </h2>
-            <p className="text-stone-500 mt-4 max-w-2xl mx-auto">
-              Confira alguns dos momentos inesquecíveis registrados em nossos roteiros pelo Espírito Santo.
-            </p>
-          </div>
-
-          <div className="columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
-            {gallery.map((item, index) => (
-              <motion.div
-                key={item.id || `gallery-${index}`}
-                initial={{ opacity: 0, scale: 0.9 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.05 }}
-                className="break-inside-avoid rounded-3xl overflow-hidden border border-stone-100 shadow-sm hover:shadow-xl transition-all duration-500 group"
-              >
-                <img 
-                  src={item.url} 
-                  alt="Gallery" 
-                  className="w-full h-auto object-cover transition-transform duration-700 group-hover:scale-110"
-                  referrerPolicy="no-referrer"
-                />
-              </motion.div>
-            ))}
-          </div>
-
-          {gallery.length === 0 && (
-            <div className="text-center py-20 bg-stone-50 rounded-[3rem] border border-dashed border-stone-200">
-              <ImageIcon className="w-12 h-12 text-stone-300 mx-auto mb-4" />
-              <p className="text-stone-400 font-medium">Em breve, novas fotos aqui!</p>
-            </div>
-          )}
-        </div>
-      </section>
 
       {/* CTA Section */}
       <section className="py-24 px-6 bg-stone-900 relative overflow-hidden">
