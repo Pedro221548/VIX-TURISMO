@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { db, auth, storage } from '../firebase';
+import { db, auth, storage, handleFirestoreError, OperationType } from '../firebase';
 import { 
   collection, 
   addDoc, 
@@ -8,7 +8,8 @@ import {
   deleteDoc, 
   doc, 
   query, 
-  orderBy 
+  orderBy,
+  onSnapshot
 } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import imageCompression from 'browser-image-compression';
@@ -121,7 +122,7 @@ interface HeroData {
   backgroundImage: string;
 }
 
-export default function AdminPanel({ onExit, initialTab }: { onExit: () => void, initialTab?: 'roteiros' | 'quickPosts' | 'sunset' | 'moqueca' | 'experiences' | 'hero' | 'settings' }) {
+export default function AdminPanel({ onExit, initialTab }: { onExit: () => void, initialTab?: 'roteiros' | 'quickPosts' | 'sunset' | 'moqueca' | 'experiences' | 'hero' | 'settings', key?: string }) {
   const [user, setUser] = useState<User | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -151,80 +152,84 @@ export default function AdminPanel({ onExit, initialTab }: { onExit: () => void,
   });
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
-      if (currentUser) {
-        fetchData();
-      } else {
+      if (!currentUser) {
         setLoading(false);
       }
     });
-    return () => unsubscribe();
-  }, []);
 
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      // Fetch Roteiros
-      const q = query(collection(db, 'roteiros'));
-      const querySnapshot = await getDocs(q);
-      const roteirosData = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Roteiro[];
+    let unsubscribers: (() => void)[] = [];
 
-      // Sort numerically by subtitle (e.g., "Roteiro 1", "Roteiro 2")
-      roteirosData.sort((a, b) => {
-        const getNum = (s: string) => {
-          const match = s.match(/\d+/);
-          return match ? parseInt(match[0]) : 0;
-        };
-        return getNum(a.subtitle) - getNum(b.subtitle);
-      });
-
-      setRoteiros(roteirosData);
-
-      // Fetch Quick Posts
-      const qp = query(collection(db, 'quick_posts'), orderBy('createdAt', 'desc'));
-      const qpSnapshot = await getDocs(qp);
-      const qpData = qpSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as QuickPost[];
-      setQuickPosts(qpData);
+    if (user) {
+      setLoading(true);
       
-      // Fetch Sunset Locations
-      const sunsetSnap = await getDocs(collection(db, 'sunset_locations'));
-      setSunsetLocations(sunsetSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as SunsetLocation[]);
+      // Real-time Roteiros
+      const unsubRoteiros = onSnapshot(collection(db, 'roteiros'), (snapshot) => {
+        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Roteiro[];
+        data.sort((a, b) => {
+          const getNum = (s: string) => {
+            const match = s.match(/\d+/);
+            return match ? parseInt(match[0]) : 0;
+          };
+          return getNum(a.subtitle) - getNum(b.subtitle);
+        });
+        setRoteiros(data);
+        setLoading(false);
+      }, (error) => {
+        console.error("Error listening to roteiros:", error);
+        setLoading(false);
+      });
+      unsubscribers.push(unsubRoteiros);
 
-      // Fetch Moqueca Recipe
-      const moquecaSnap = await getDocs(collection(db, 'moqueca_recipe'));
-      if (!moquecaSnap.empty) {
-        setMoquecaRecipe({ id: moquecaSnap.docs[0].id, ...moquecaSnap.docs[0].data() } as MoquecaRecipe);
-      }
+      // Real-time Quick Posts
+      const unsubQuickPosts = onSnapshot(query(collection(db, 'quick_posts'), orderBy('createdAt', 'desc')), (snapshot) => {
+        setQuickPosts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as QuickPost[]);
+      });
+      unsubscribers.push(unsubQuickPosts);
 
-      // Fetch Experiences
-      const expSnap = await getDocs(collection(db, 'experiences'));
-      setExperiences(expSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Experience[]);
+      // Real-time Sunset Locations
+      const unsubSunset = onSnapshot(collection(db, 'sunset_locations'), (snapshot) => {
+        setSunsetLocations(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as SunsetLocation[]);
+      });
+      unsubscribers.push(unsubSunset);
 
-      // Fetch Hero Data
-      const heroSnap = await getDocs(collection(db, 'hero_data'));
-      if (!heroSnap.empty) {
-        setHeroData({ id: heroSnap.docs[0].id, ...heroSnap.docs[0].data() } as HeroData);
-      }
+      // Real-time Moqueca Recipe
+      const unsubMoqueca = onSnapshot(collection(db, 'moqueca_recipe'), (snapshot) => {
+        if (!snapshot.empty) {
+          setMoquecaRecipe({ id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as MoquecaRecipe);
+        }
+      });
+      unsubscribers.push(unsubMoqueca);
 
-      // Fetch Contact Info
-      const contactSnap = await getDocs(collection(db, 'settings'));
-      if (!contactSnap.empty) {
-        const data = contactSnap.docs[0].data() as ContactInfo;
-        setContactInfo(data);
-      }
-    } catch (error) {
-      console.error("Error fetching data:", error);
-    } finally {
-      setLoading(false);
+      // Real-time Experiences
+      const unsubExperiences = onSnapshot(collection(db, 'experiences'), (snapshot) => {
+        setExperiences(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Experience[]);
+      });
+      unsubscribers.push(unsubExperiences);
+
+      // Real-time Hero Data
+      const unsubHero = onSnapshot(collection(db, 'hero_data'), (snapshot) => {
+        if (!snapshot.empty) {
+          setHeroData({ id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as HeroData);
+        }
+      });
+      unsubscribers.push(unsubHero);
+
+      // Real-time Contact Info
+      const unsubSettings = onSnapshot(collection(db, 'settings'), (snapshot) => {
+        if (!snapshot.empty) {
+          setContactInfo(snapshot.docs[0].data() as ContactInfo);
+        }
+      });
+      unsubscribers.push(unsubSettings);
     }
-  };
+
+    return () => {
+      unsubscribeAuth();
+      unsubscribers.forEach(unsub => unsub());
+    };
+  }, [user]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -340,7 +345,6 @@ export default function AdminPanel({ onExit, initialTab }: { onExit: () => void,
         await addDoc(collection(db, 'roteiros'), editingRoteiro);
       }
       setEditingRoteiro(null);
-      fetchData();
     } catch (error) {
       console.error("Error saving roteiro:", error);
     }
@@ -350,7 +354,6 @@ export default function AdminPanel({ onExit, initialTab }: { onExit: () => void,
     if (!confirm('Tem certeza que deseja excluir este roteiro?')) return;
     try {
       await deleteDoc(doc(db, 'roteiros', id));
-      fetchData();
     } catch (error) {
       console.error("Error deleting roteiro:", error);
     }
@@ -370,7 +373,6 @@ export default function AdminPanel({ onExit, initialTab }: { onExit: () => void,
         });
       }
       setEditingQuickPost(null);
-      fetchData();
     } catch (error) {
       console.error("Error saving quick post:", error);
     }
@@ -380,9 +382,8 @@ export default function AdminPanel({ onExit, initialTab }: { onExit: () => void,
     if (!confirm('Tem certeza que deseja excluir este post?')) return;
     try {
       await deleteDoc(doc(db, 'quick_posts', id));
-      fetchData();
     } catch (error) {
-      console.error("Error deleting quick post:", error);
+      handleFirestoreError(error, OperationType.DELETE, `quick_posts/${id}`);
     }
   };
 
@@ -396,7 +397,7 @@ export default function AdminPanel({ onExit, initialTab }: { onExit: () => void,
       }
       alert('Configurações salvas com sucesso!');
     } catch (error) {
-      console.error("Error saving settings:", error);
+      handleFirestoreError(error, OperationType.WRITE, 'settings');
     }
   };
 
@@ -410,7 +411,6 @@ export default function AdminPanel({ onExit, initialTab }: { onExit: () => void,
         await addDoc(collection(db, 'sunset_locations'), editingSunset);
       }
       setEditingSunset(null);
-      fetchData();
     } catch (error) {
       console.error("Error saving sunset location:", error);
     }
@@ -420,7 +420,6 @@ export default function AdminPanel({ onExit, initialTab }: { onExit: () => void,
     if (!confirm('Excluir este local?')) return;
     try {
       await deleteDoc(doc(db, 'sunset_locations', id));
-      fetchData();
     } catch (error) {
       console.error("Error deleting sunset location:", error);
     }
@@ -436,7 +435,6 @@ export default function AdminPanel({ onExit, initialTab }: { onExit: () => void,
         await addDoc(collection(db, 'experiences'), editingExperience);
       }
       setEditingExperience(null);
-      fetchData();
     } catch (error) {
       console.error("Error saving experience:", error);
     }
@@ -446,7 +444,6 @@ export default function AdminPanel({ onExit, initialTab }: { onExit: () => void,
     if (!confirm('Excluir esta experiência?')) return;
     try {
       await deleteDoc(doc(db, 'experiences', id));
-      fetchData();
     } catch (error) {
       console.error("Error deleting experience:", error);
     }
@@ -462,7 +459,6 @@ export default function AdminPanel({ onExit, initialTab }: { onExit: () => void,
         await addDoc(collection(db, 'moqueca_recipe'), editingMoqueca);
       }
       setEditingMoqueca(null);
-      fetchData();
     } catch (error) {
       console.error("Error saving moqueca recipe:", error);
     }
@@ -478,7 +474,6 @@ export default function AdminPanel({ onExit, initialTab }: { onExit: () => void,
         await addDoc(collection(db, 'hero_data'), editingHero);
       }
       setEditingHero(null);
-      fetchData();
     } catch (error) {
       console.error("Error saving hero data:", error);
     }
@@ -641,7 +636,6 @@ export default function AdminPanel({ onExit, initialTab }: { onExit: () => void,
       }
 
       alert('Banco de dados populado com sucesso!');
-      fetchData();
     } catch (error) {
       console.error("Error seeding database:", error);
       alert('Erro ao popular banco de dados.');
@@ -653,15 +647,27 @@ export default function AdminPanel({ onExit, initialTab }: { onExit: () => void,
 
   if (loading) {
     return (
-      <div className="fixed inset-0 bg-white z-[100] flex items-center justify-center">
+      <motion.div 
+        key="admin-loading"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 bg-white z-[100] flex items-center justify-center"
+      >
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
-      </div>
+      </motion.div>
     );
   }
 
   if (!user) {
     return (
-      <div className="fixed inset-0 bg-stone-100 z-[100] flex items-center justify-center p-0 md:p-6 overflow-hidden">
+      <motion.div 
+        key="admin-login"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 bg-stone-100 z-[100] flex items-center justify-center p-0 md:p-6 overflow-hidden"
+      >
         <motion.div 
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -744,12 +750,18 @@ export default function AdminPanel({ onExit, initialTab }: { onExit: () => void,
             </form>
           </div>
         </motion.div>
-      </div>
+      </motion.div>
     );
   }
 
   return (
-    <div className="fixed inset-0 bg-stone-50 z-[100] overflow-y-auto pb-20">
+    <motion.div 
+      key="admin-dashboard"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-stone-50 z-[100] overflow-y-auto pb-20"
+    >
       <header className="bg-white border-b border-stone-200 sticky top-0 z-10 px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-3">
@@ -1169,7 +1181,7 @@ export default function AdminPanel({ onExit, initialTab }: { onExit: () => void,
       {/* Edit Modal */}
       <AnimatePresence>
         {editingRoteiro && (
-          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div key="edit-roteiro-overlay" className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
             <motion.div 
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -1437,7 +1449,7 @@ export default function AdminPanel({ onExit, initialTab }: { onExit: () => void,
       {/* Quick Post Edit Modal */}
       <AnimatePresence>
         {editingQuickPost && (
-          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div key="edit-quickpost-overlay" className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
             <motion.div 
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -1564,7 +1576,7 @@ export default function AdminPanel({ onExit, initialTab }: { onExit: () => void,
         )}
 
         {editingSunset && (
-          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div key="edit-sunset-overlay" className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
             <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="bg-white rounded-[2.5rem] w-full max-w-lg p-8 md:p-12 shadow-2xl relative">
               <button onClick={() => setEditingSunset(null)} className="absolute top-8 right-8 text-stone-400"><X className="w-8 h-8" /></button>
               <h3 className="text-3xl font-bold text-stone-900 mb-8">{editingSunset.id ? 'Editar Local' : 'Novo Local do Sol'}</h3>
@@ -1610,7 +1622,7 @@ export default function AdminPanel({ onExit, initialTab }: { onExit: () => void,
         )}
 
         {editingExperience && (
-          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div key="edit-experience-overlay" className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
             <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="bg-white rounded-[2.5rem] w-full max-w-lg p-8 md:p-12 shadow-2xl relative">
               <button onClick={() => setEditingExperience(null)} className="absolute top-8 right-8 text-stone-400"><X className="w-8 h-8" /></button>
               <h3 className="text-3xl font-bold text-stone-900 mb-8">{editingExperience.id ? 'Editar Experiência' : 'Nova Experiência'}</h3>
@@ -1637,7 +1649,7 @@ export default function AdminPanel({ onExit, initialTab }: { onExit: () => void,
         )}
 
         {editingMoqueca && (
-          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div key="edit-moqueca-overlay" className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
             <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="bg-white rounded-[2.5rem] w-full max-w-4xl max-h-[90vh] overflow-y-auto p-8 md:p-12 shadow-2xl relative">
               <button onClick={() => setEditingMoqueca(null)} className="absolute top-8 right-8 text-stone-400"><X className="w-8 h-8" /></button>
               <h3 className="text-3xl font-bold text-stone-900 mb-8">Editar Receita da Moqueca</h3>
@@ -1698,7 +1710,7 @@ export default function AdminPanel({ onExit, initialTab }: { onExit: () => void,
         )}
 
         {editingHero && (
-          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div key="edit-hero-overlay" className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
             <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="bg-white rounded-[2.5rem] w-full max-w-lg p-8 md:p-12 shadow-2xl relative">
               <button onClick={() => setEditingHero(null)} className="absolute top-8 right-8 text-stone-400"><X className="w-8 h-8" /></button>
               <h3 className="text-3xl font-bold text-stone-900 mb-8">Editar Seção Hero</h3>
@@ -1740,6 +1752,6 @@ export default function AdminPanel({ onExit, initialTab }: { onExit: () => void,
           </div>
         )}
       </AnimatePresence>
-    </div>
+    </motion.div>
   );
 }

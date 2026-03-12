@@ -5,8 +5,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { db } from './firebase';
-import { collection, getDocs, addDoc, query, orderBy, updateDoc, doc } from 'firebase/firestore';
+import { db, auth, handleFirestoreError, OperationType } from './firebase';
+import { collection, getDocs, addDoc, query, orderBy, updateDoc, doc, onSnapshot } from 'firebase/firestore';
+import { signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import AdminPanel from './components/AdminPanel';
 import { 
   MapPin, 
@@ -153,70 +154,7 @@ const INITIAL_ROTEIROS = [
   }
 ];
 
-function SunsetModal({ onClose }: { onClose: () => void }) {
-  const locations = [
-    {
-      title: "1- CURVA DA JUREMA (VITÓRIA)",
-      image: "https://midias.agazeta.com.br/2024/09/09/nascer-do-sol-na-curva-da-jurema-2417744-article.jpg",
-      type: "NASCER DO SOL",
-      credit: "Instagram/@remarvix"
-    },
-    {
-      title: "2- CAMBURI (VITÓRIA)",
-      image: "https://midias.agazeta.com.br/2024/09/09/o-nascer-do-sol-da-praia-de-camburi-em-vitoria-2417642-article.jpg",
-      type: "NASCER DO SOL",
-      credit: "Ramon Alves"
-    },
-    {
-      title: "3- MANGUINHOS (SERRA)",
-      image: "https://midias.agazeta.com.br/2024/09/09/o-nascer-do-sol-em-manguinhos-na-serra-e-encantador-2417764-article.jpg",
-      type: "NASCER DO SOL",
-      credit: "Reprodução/Instagram/@docemanguinhos"
-    },
-    {
-      title: "4- MORRO DO MORENO (VILA VELHA)",
-      image: "https://midias.agazeta.com.br/2024/09/10/o-nascer-do-sol-no-morro-do-moreno-2419702-article.png",
-      type: "NASCER DO SOL",
-      credit: "Reprodução/Instagram/@mariojuniorjo/@cafeoracaomorrodomoreno"
-    },
-    {
-      title: "5- FONTE GRANDE (VITÓRIA)",
-      image: "https://midias.agazeta.com.br/2024/09/09/o-por-do-sol-no-parque-da-fonte-grande-e-um-verdadeiro-espetaculo-2417777-article.jpg",
-      type: "PÔR DO SOL",
-      credit: "Reprodução/Instagram/@tavares.expedicoes"
-    },
-    {
-      title: "6- ILHA DAS CAIEIRAS (VITÓRIA)",
-      image: "https://midias.agazeta.com.br/2024/09/09/por-do-sol-da-ilha-das-caieiras--2417643-article.jpg",
-      type: "PÔR DO SOL",
-      credit: "Reprodução/Instagram/@vanda_lopes1000"
-    },
-    {
-      title: "7- ORLA DE PORTO DE SANTANA (CARIACICA)",
-      image: "https://midias.agazeta.com.br/2024/09/09/a-orla-de-cariacica-e-um-point-para-assistir-o-por-do-sol-2417792-article.jpg",
-      type: "PÔR DO SOL",
-      credit: "Reprodução/Instagram/@rfotosporai/@orladecariacica"
-    },
-    {
-      title: "8- CONVENTO DA PENHA (VILA VELHA)",
-      image: "https://midias.agazeta.com.br/2024/09/09/visao-do-convento-da-penha-no-por-do-sol-2417833-article.jpg",
-      type: "PÔR DO SOL",
-      credit: "Reprodução/Instagram/@visaodrone027"
-    },
-    {
-      title: "9- BEIRA MAR (VITÓRIA)",
-      image: "https://midias.agazeta.com.br/2024/09/09/por-do-sol-da-baia-de-vitoria-2417644-article.jpg",
-      type: "PÔR DO SOL",
-      credit: "Jansen Dias Lube"
-    },
-    {
-      title: "10- MEAÍPE - GUARAPARI",
-      image: "https://midias.agazeta.com.br/2024/09/09/o-por-do-sol-em-meaipe-guarapari-parece-cena-de-filme-2417842-article.jpg",
-      type: "PÔR DO SOL",
-      credit: "Evelize Calmon"
-    }
-  ];
-
+function SunsetModal({ onClose, locations }: { onClose: () => void, locations: any[], key?: string }) {
   return (
     <motion.div 
       initial={{ opacity: 0 }}
@@ -342,7 +280,9 @@ function SunsetModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-function MoquecaModal({ onClose }: { onClose: () => void }) {
+function MoquecaModal({ onClose, recipe }: { onClose: () => void, recipe: any, key?: string }) {
+  if (!recipe) return null;
+
   return (
     <motion.div 
       initial={{ opacity: 0 }}
@@ -360,8 +300,8 @@ function MoquecaModal({ onClose }: { onClose: () => void }) {
       >
         <div className="relative h-64 md:h-96 shrink-0">
           <img 
-            src="https://th.bing.com/th/id/R.cf064b34bd5a5cec1866ce029cf3de86?rik=W6sqI2x0OZ4uNw&riu=http%3a%2f%2fwww.portaltemponovo.com.br%2fwp-content%2fuploads%2f2015%2f09%2fmoqueca-capixaba1-641.jpg&ehk=GH25fQxmlrMj0zZW%2fHA2IcJXStY7YbH%2bAZLu5Rrt8wM%3d&risl=&pid=ImgRaw&r=0" 
-            alt="Moqueca Capixaba Tradicional"
+            src={recipe.image} 
+            alt={recipe.title}
             className="w-full h-full object-cover"
             referrerPolicy="no-referrer"
             onError={(e) => {
@@ -380,14 +320,14 @@ function MoquecaModal({ onClose }: { onClose: () => void }) {
             <span className="bg-orange-600 text-white px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest mb-2 inline-block">
               Receita Tradicional
             </span>
-            <h2 className="text-3xl md:text-5xl font-bold text-stone-900">Moqueca Capixaba Tradicional</h2>
+            <h2 className="text-3xl md:text-5xl font-bold text-stone-900">{recipe.title}</h2>
           </div>
         </div>
 
         <div className="p-8 md:p-12 overflow-y-auto">
           <div className="mb-10">
             <p className="text-stone-600 text-lg leading-relaxed italic border-l-4 border-orange-500 pl-6">
-              "A moqueca capixaba é um prato típico do Espírito Santo, preparado sem leite de coco nem dendê, diferente da versão baiana. Seu sabor autêntico vem do peixe fresco, do colorau, do coentro e do azeite de oliva ou urucum. Um prato leve, saboroso e ideal tanto para refeições familiares quanto para cardápios profissionais."
+              "{recipe.description}"
             </p>
           </div>
 
@@ -395,22 +335,22 @@ function MoquecaModal({ onClose }: { onClose: () => void }) {
             <div className="bg-stone-50 p-4 rounded-2xl border border-stone-100 flex flex-col items-center text-center">
               <Clock className="w-5 h-5 text-orange-600 mb-2" />
               <span className="text-[10px] text-stone-400 uppercase font-bold tracking-widest mb-1">Preparação</span>
-              <span className="text-sm font-bold text-stone-900">20 min</span>
+              <span className="text-sm font-bold text-stone-900">{recipe.prepTime}</span>
             </div>
             <div className="bg-stone-50 p-4 rounded-2xl border border-stone-100 flex flex-col items-center text-center">
               <Flame className="w-5 h-5 text-orange-600 mb-2" />
               <span className="text-[10px] text-stone-400 uppercase font-bold tracking-widest mb-1">Cozimento</span>
-              <span className="text-sm font-bold text-stone-900">40 min</span>
+              <span className="text-sm font-bold text-stone-900">{recipe.cookTime}</span>
             </div>
             <div className="bg-stone-50 p-4 rounded-2xl border border-stone-100 flex flex-col items-center text-center">
               <Users className="w-5 h-5 text-orange-600 mb-2" />
               <span className="text-[10px] text-stone-400 uppercase font-bold tracking-widest mb-1">Porções</span>
-              <span className="text-sm font-bold text-stone-900">6 pessoas</span>
+              <span className="text-sm font-bold text-stone-900">{recipe.servings}</span>
             </div>
             <div className="bg-stone-50 p-4 rounded-2xl border border-stone-100 flex flex-col items-center text-center">
               <ChefHat className="w-5 h-5 text-orange-600 mb-2" />
               <span className="text-[10px] text-stone-400 uppercase font-bold tracking-widest mb-1">Calorias</span>
-              <span className="text-sm font-bold text-stone-900">320 kcal</span>
+              <span className="text-sm font-bold text-stone-900">{recipe.calories}</span>
             </div>
           </div>
 
@@ -421,43 +361,33 @@ function MoquecaModal({ onClose }: { onClose: () => void }) {
               </h3>
               
               <div className="space-y-8">
-                <div>
-                  <h4 className="text-sm font-black text-orange-600 uppercase tracking-widest mb-4">Peixe e Marinada</h4>
-                  <ul className="space-y-3">
-                    {[
-                      "1,2 kg postas de peixe firme (robalo, badejo ou dourado)",
-                      "10 g sal",
-                      "5 g pimenta do reino",
-                      "40 g suco de limão"
-                    ].map(item => (
-                      <li key={item} className="flex items-start gap-3 text-stone-600 text-sm">
-                        <div className="w-1.5 h-1.5 rounded-full bg-stone-300 mt-1.5 shrink-0" />
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+                {recipe.ingredients.marinade && recipe.ingredients.marinade.length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-black text-orange-600 uppercase tracking-widest mb-4">Peixe e Marinada</h4>
+                    <ul className="space-y-3">
+                      {recipe.ingredients.marinade.map((item: string) => (
+                        <li key={item} className="flex items-start gap-3 text-stone-600 text-sm">
+                          <div className="w-1.5 h-1.5 rounded-full bg-stone-300 mt-1.5 shrink-0" />
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
 
-                <div>
-                  <h4 className="text-sm font-black text-orange-600 uppercase tracking-widest mb-4">Refogado e Montagem</h4>
-                  <ul className="space-y-3">
-                    {[
-                      "80 g azeite de oliva",
-                      "40 g azeite de urucum ou colorau refogado em azeite",
-                      "300 g cebola em cubos ou rodelas",
-                      "200 g tomate em cubos ou rodelas",
-                      "30 g alho picado",
-                      "50 g coentro picado",
-                      "20 g cebolinha picada",
-                      "qb água (somente se for necessário)"
-                    ].map(item => (
-                      <li key={item} className="flex items-start gap-3 text-stone-600 text-sm">
-                        <div className="w-1.5 h-1.5 rounded-full bg-stone-300 mt-1.5 shrink-0" />
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+                {recipe.ingredients.cooking && recipe.ingredients.cooking.length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-black text-orange-600 uppercase tracking-widest mb-4">Refogado e Montagem</h4>
+                    <ul className="space-y-3">
+                      {recipe.ingredients.cooking.map((item: string) => (
+                        <li key={item} className="flex items-start gap-3 text-stone-600 text-sm">
+                          <div className="w-1.5 h-1.5 rounded-full bg-stone-300 mt-1.5 shrink-0" />
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -466,14 +396,7 @@ function MoquecaModal({ onClose }: { onClose: () => void }) {
                 <ChefHat className="w-5 h-5 text-orange-600" /> Instruções
               </h3>
               <ul className="space-y-6">
-                {[
-                  "Tempere as postas de peixe com sal, pimenta e suco de limão. Reserve por 15 minutos.",
-                  "Aqueça o azeite de oliva e o azeite de urucum em uma panela de barro (ou de fundo grosso).",
-                  "Frite o alho. Faça camadas com cebola, tomate e coentro.",
-                  "Coloque as postas de peixe sobre os legumes e regue com um pouco do caldo quente (se for necessário).",
-                  "Tampe a panela e cozinhe em fogo baixo por cerca de 25 a 30 minutos, mexendo apenas a panela (não use colher para não desmanchar o peixe).",
-                  "Acrescente o coentro e a cebolinha picados. Ajuste o sal, desligue o fogo e deixe descansar 5 minutos antes de servir."
-                ].map((step, i) => (
+                {recipe.instructions.map((step: string, i: number) => (
                   <li key={i} className="flex gap-4">
                     <span className="flex items-center justify-center w-6 h-6 rounded-full bg-orange-100 text-orange-600 text-xs font-bold shrink-0">
                       {i + 1}
@@ -483,14 +406,16 @@ function MoquecaModal({ onClose }: { onClose: () => void }) {
                 ))}
               </ul>
 
-              <div className="mt-12 p-6 bg-orange-50 rounded-3xl border border-orange-100">
-                <h4 className="text-xs font-black text-orange-600 uppercase tracking-widest mb-3">Notas do Chef</h4>
-                <ul className="space-y-2">
-                  <li className="text-xs text-orange-800 leading-relaxed">• Tradicionalmente, a moqueca capixaba é servida com arroz branco e pirão feito com o caldo do cozimento.</li>
-                  <li className="text-xs text-orange-800 leading-relaxed">• O peixe deve ser fresco e de carne firme para não se desfazer durante o cozimento.</li>
-                  <li className="text-xs text-orange-800 leading-relaxed">• O uso da panela de barro capixaba é típico e realça o sabor.</li>
-                </ul>
-              </div>
+              {recipe.notes && recipe.notes.length > 0 && (
+                <div className="mt-12 p-6 bg-orange-50 rounded-3xl border border-orange-100">
+                  <h4 className="text-xs font-black text-orange-600 uppercase tracking-widest mb-3">Notas do Chef</h4>
+                  <ul className="space-y-2">
+                    {recipe.notes.map((note: string) => (
+                      <li key={note} className="text-xs text-orange-800 leading-relaxed">• {note}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -521,7 +446,7 @@ function FadeInImage({ src, alt, className, loading = "lazy" }: { src: string, a
   );
 }
 
-function RoteiroModal({ roteiro, onClose, contactInfo, onDownload }: { roteiro: any, onClose: () => void, contactInfo: any, onDownload: (url: string, filename: string) => void }) {
+function RoteiroModal({ roteiro, onClose, contactInfo, onDownload }: { roteiro: any, onClose: () => void, contactInfo: any, onDownload: (url: string, filename: string) => void, key?: string }) {
   return (
     <motion.div 
       initial={{ opacity: 0 }}
@@ -755,7 +680,7 @@ const experiences = [
   }
 ];
 
-function BookingModal({ isOpen, onClose, roteiroTitle, contactInfo }: { isOpen: boolean, onClose: () => void, roteiroTitle: string, contactInfo: any }) {
+function BookingModal({ isOpen, onClose, roteiroTitle, contactInfo }: { isOpen: boolean, onClose: () => void, roteiroTitle: string, contactInfo: any, key?: string }) {
   const [name, setName] = useState('');
   const [date, setDate] = useState('');
 
@@ -786,7 +711,12 @@ Desde já, agradeço pela atenção.`;
   };
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-6">
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[200] flex items-center justify-center p-6"
+    >
       <motion.div 
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -847,7 +777,7 @@ Desde já, agradeço pela atenção.`;
           </button>
         </form>
       </motion.div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -858,11 +788,15 @@ export default function App() {
   const [showMoquecaRecipe, setShowMoquecaRecipe] = useState(false);
   const [showSunsetGuide, setShowSunsetGuide] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
-  const [roteiros, setRoteiros] = useState<any[]>([]);
-  const [quickPosts, setQuickPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'roteiros' | 'quickPosts'>('roteiros');
   const [adminTab, setAdminTab] = useState<'roteiros' | 'quickPosts' | 'sunset' | 'moqueca' | 'experiences' | 'hero' | 'settings'>('roteiros');
+  const [roteiros, setRoteiros] = useState<any[]>([]);
+  const [quickPosts, setQuickPosts] = useState<any[]>([]);
+  const [sunsetLocations, setSunsetLocations] = useState<any[]>([]);
+  const [moquecaRecipe, setMoquecaRecipe] = useState<any>(null);
+  const [experiences, setExperiences] = useState<any[]>([]);
+  const [heroData, setHeroData] = useState<any>(null);
   const [contactInfo, setContactInfo] = useState<any>({
     phone: '5527998597568',
     whatsapp: '5527998597568',
@@ -889,58 +823,103 @@ export default function App() {
     }
   };
 
+  const [isAuth, setIsAuth] = useState(false);
+
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        // Fetch Roteiros
-        const q = query(collection(db, 'roteiros'));
-        const querySnapshot = await getDocs(q);
-        
-        let roteirosData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
-
-        // Sort by subtitle numerically (e.g., "Roteiro 1", "Roteiro 2")
-        roteirosData.sort((a, b) => {
-          const getNum = (s: string) => {
-            const match = (s || '').match(/\d+/);
-            return match ? parseInt(match[0]) : 0;
-          };
-          return getNum(a.subtitle) - getNum(b.subtitle);
-        });
-
-        setRoteiros(roteirosData);
-
-        // Fetch Quick Posts
-        const qp = query(collection(db, 'quick_posts'), orderBy('createdAt', 'desc'));
-        const qpSnapshot = await getDocs(qp);
-        const qpData = qpSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setQuickPosts(qpData);
-
-        // Fetch Settings
-        const settingsSnap = await getDocs(collection(db, 'settings'));
-        if (!settingsSnap.empty) {
-          setContactInfo(settingsSnap.docs[0].data());
-        }
-        setLoading(false);
-      } catch (error) {
-        console.error("Error fetching data:", error);
-        // Fallback to initial data if firebase fails
-        setRoteiros(INITIAL_ROTEIROS);
-        setLoading(false);
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setIsAuth(true);
+      } else {
+        signInAnonymously(auth).catch(err => console.error("Anonymous sign-in error:", err));
       }
-    };
+    });
 
-    fetchData();
-  }, [showAdmin]); // Refresh when closing admin
-  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
-  const [bookingRoteiro, setBookingRoteiro] = useState<any>(null);
-
-  useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 50);
     };
     window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    return () => {
+      unsubscribe();
+      window.removeEventListener('scroll', handleScroll);
+    };
   }, []);
+
+  useEffect(() => {
+    if (!isAuth) return;
+
+    const unsubRoteiros = onSnapshot(collection(db, 'roteiros'), (snapshot) => {
+      let data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
+      data.sort((a, b) => {
+        const getNum = (s: string) => {
+          const match = (s || '').match(/\d+/);
+          return match ? parseInt(match[0]) : 0;
+        };
+        return getNum(a.subtitle) - getNum(b.subtitle);
+      });
+      setRoteiros(data);
+      if (data.length === 0) setRoteiros(INITIAL_ROTEIROS);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'roteiros');
+      if (roteiros.length === 0) setRoteiros(INITIAL_ROTEIROS);
+    });
+
+    const unsubQuickPosts = onSnapshot(query(collection(db, 'quick_posts'), orderBy('createdAt', 'desc')), (snapshot) => {
+      setQuickPosts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'quick_posts');
+    });
+
+    const unsubSunset = onSnapshot(collection(db, 'sunset_locations'), (snapshot) => {
+      setSunsetLocations(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'sunset_locations');
+    });
+
+    const unsubMoqueca = onSnapshot(collection(db, 'moqueca_recipe'), (snapshot) => {
+      if (!snapshot.empty) {
+        setMoquecaRecipe({ id: snapshot.docs[0].id, ...snapshot.docs[0].data() });
+      }
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'moqueca_recipe');
+    });
+
+    const unsubExperiences = onSnapshot(collection(db, 'experiences'), (snapshot) => {
+      setExperiences(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'experiences');
+    });
+
+    const unsubHero = onSnapshot(collection(db, 'hero_data'), (snapshot) => {
+      if (!snapshot.empty) {
+        setHeroData({ id: snapshot.docs[0].id, ...snapshot.docs[0].data() });
+      }
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'hero_data');
+    });
+
+    const unsubSettings = onSnapshot(collection(db, 'settings'), (snapshot) => {
+      if (!snapshot.empty) {
+        setContactInfo(snapshot.docs[0].data());
+      }
+      setLoading(false);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'settings');
+      setLoading(false);
+    });
+
+    return () => {
+      unsubRoteiros();
+      unsubQuickPosts();
+      unsubSunset();
+      unsubMoqueca();
+      unsubExperiences();
+      unsubHero();
+      unsubSettings();
+    };
+  }, [isAuth]);
+
+  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+  const [bookingRoteiro, setBookingRoteiro] = useState<any>(null);
 
   if (loading) {
     return (
@@ -955,6 +934,7 @@ export default function App() {
       <AnimatePresence>
         {isBookingModalOpen && (
           <BookingModal 
+            key="booking-modal"
             isOpen={isBookingModalOpen} 
             onClose={() => setIsBookingModalOpen(false)} 
             roteiroTitle={bookingRoteiro?.title || ''} 
@@ -1034,6 +1014,7 @@ export default function App() {
       <AnimatePresence>
         {isMenuOpen && (
           <motion.div 
+            key="mobile-menu"
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
@@ -1065,10 +1046,11 @@ export default function App() {
 
       <AnimatePresence>
         {showAdmin && (
-          <AdminPanel onExit={() => setShowAdmin(false)} initialTab={adminTab} />
+          <AdminPanel key="admin-panel" onExit={() => setShowAdmin(false)} initialTab={adminTab} />
         )}
         {selectedRoteiro && (
           <RoteiroModal 
+            key="roteiro-modal"
             roteiro={selectedRoteiro} 
             onClose={() => setSelectedRoteiro(null)} 
             contactInfo={contactInfo}
@@ -1076,10 +1058,10 @@ export default function App() {
           />
         )}
         {showMoquecaRecipe && (
-          <MoquecaModal onClose={() => setShowMoquecaRecipe(false)} />
+          <MoquecaModal key="moqueca-modal" onClose={() => setShowMoquecaRecipe(false)} recipe={moquecaRecipe} />
         )}
         {showSunsetGuide && (
-          <SunsetModal onClose={() => setShowSunsetGuide(false)} />
+          <SunsetModal key="sunset-modal" onClose={() => setShowSunsetGuide(false)} locations={sunsetLocations} />
         )}
       </AnimatePresence>
 
@@ -1087,8 +1069,8 @@ export default function App() {
       <section className="relative h-screen flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0 z-0">
           <img 
-            src="https://upload.wikimedia.org/wikipedia/commons/0/03/Convento_da_Penha_e_Terceira_Ponte_com_Mar_e_Vit%C3%B3ria_ao_fundo.jpg" 
-            alt="Convento da Penha e Terceira Ponte" 
+            src={heroData?.backgroundImage || "https://upload.wikimedia.org/wikipedia/commons/0/03/Convento_da_Penha_e_Terceira_Ponte_com_Mar_e_Vit%C3%B3ria_ao_fundo.jpg"} 
+            alt="Hero Background" 
             className="w-full h-full object-cover scale-105 animate-slow-zoom"
             referrerPolicy="no-referrer"
             loading="eager"
@@ -1107,13 +1089,21 @@ export default function App() {
             transition={{ duration: 0.8 }}
           >
             <span className="inline-block px-4 py-1.5 bg-white/10 backdrop-blur-md border border-white/20 rounded-full text-white text-xs font-bold uppercase tracking-widest mb-6">
-              Bem-vindo ao Espírito Santo
+              {heroData?.subtitle || "Bem-vindo ao Espírito Santo"}
             </span>
             <h1 className="text-5xl md:text-8xl font-bold text-white mb-8 tracking-tighter leading-[0.9]">
-              Descubra a Magia de <span className="text-orange-400">Vitória</span>
+              {heroData?.title ? (
+                heroData.title.split(' ').map((word: string, i: number) => (
+                  <React.Fragment key={i}>
+                    {word === 'Vitória' ? <span className="text-orange-400">{word}</span> : word}{' '}
+                  </React.Fragment>
+                ))
+              ) : (
+                <>Descubra a Magia de <span className="text-orange-400">Vitória</span></>
+              )}
             </h1>
             <p className="text-lg md:text-xl text-white/80 mb-10 max-w-2xl mx-auto font-light leading-relaxed">
-              Entre montanhas e o mar, a capital do Espírito Santo guarda segredos históricos, praias paradisíacas e a melhor gastronomia do Brasil.
+              {heroData?.description || "Entre montanhas e o mar, a capital do Espírito Santo guarda segredos históricos, praias paradisíacas e a melhor gastronomia do Brasil."}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <a 
@@ -1588,7 +1578,26 @@ export default function App() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {experiences.map((exp, index) => (
+            {(experiences.length > 0 ? experiences : [
+              {
+                title: "Moqueca Capixaba",
+                description: "O prato mais famoso do estado. 'Moqueca é capixaba, o resto é peixada'.",
+                icon: <Utensils className="w-6 h-6" />,
+                color: "bg-orange-500"
+              },
+              {
+                title: "Passeio de Escuna",
+                description: "Navegue pela baía de Vitória e descubra a cidade por um novo ângulo.",
+                icon: <Waves className="w-6 h-6" />,
+                color: "bg-blue-500"
+              },
+              {
+                title: "Pôr do Sol no Canal",
+                description: "Um espetáculo diário que colore o céu de Vitória em tons de dourado.",
+                icon: <Sun className="w-6 h-6" />,
+                color: "bg-yellow-500"
+              }
+            ]).map((exp, index) => (
               <motion.div 
                 key={exp.title}
                 initial={{ opacity: 0, scale: 0.95 }}
@@ -1598,7 +1607,10 @@ export default function App() {
                 className="bg-white/5 border border-white/10 p-10 rounded-[2.5rem] backdrop-blur-sm hover:bg-white/10 transition-all group"
               >
                 <div className={`${exp.color} w-14 h-14 rounded-2xl flex items-center justify-center text-white mb-8 shadow-lg shadow-orange-600/20 group-hover:scale-110 transition-transform`}>
-                  {exp.icon}
+                  {exp.icon === 'Utensils' ? <Utensils className="w-6 h-6" /> : 
+                   exp.icon === 'Waves' ? <Waves className="w-6 h-6" /> :
+                   exp.icon === 'Sun' ? <Sun className="w-6 h-6" /> :
+                   typeof exp.icon === 'string' ? <Sparkles className="w-6 h-6" /> : exp.icon}
                 </div>
                 <h3 className="text-2xl font-bold text-white mb-4">{exp.title}</h3>
                 <p className="text-white/60 leading-relaxed mb-8">
