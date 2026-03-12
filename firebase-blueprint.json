@@ -1,50 +1,42 @@
 {
   "entities": {
-    "Store": {
-      "title": "Store Configuration",
-      "description": "Global settings for the store like name, logo, and colors.",
+    "Roteiro": {
+      "title": "Roteiro",
+      "description": "A travel itinerary.",
       "type": "object",
       "properties": {
-        "name": { "type": "string", "description": "The name of the store." },
-        "logo": { "type": "string", "description": "URL to the store logo." },
-        "colors": { "type": "object", "description": "Theme colors for the store." }
+        "title": { "type": "string" },
+        "subtitle": { "type": "string" },
+        "price": { "type": "string" },
+        "images": { "type": "array", "items": { "type": "string" } },
+        "places": { "type": "array", "items": { "type": "string" } },
+        "history": { "type": "string" },
+        "gastronomy": { "type": "string" },
+        "curiosities": { "type": "string" }
       },
-      "required": ["name"]
+      "required": ["title", "price"]
     },
-    "Product": {
-      "title": "Product",
-      "description": "A product available in the store.",
+    "GalleryImage": {
+      "title": "Gallery Image",
+      "description": "An image for the gallery section.",
       "type": "object",
       "properties": {
-        "name": { "type": "string", "description": "Product name." },
-        "description": { "type": "string", "description": "Product description." },
-        "price": { "type": "number", "description": "Product price." },
-        "image": { "type": "string", "description": "URL to product image." },
-        "category": { "type": "string", "description": "Product category." }
+        "url": { "type": "string", "description": "URL of the image." },
+        "caption": { "type": "string", "description": "Optional caption for the image." },
+        "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["name", "price"]
+      "required": ["url"]
     },
-    "Banner": {
-      "title": "Banner",
-      "description": "Promotional banner for the store.",
+    "Settings": {
+      "title": "Settings",
+      "description": "Global app settings and contact info.",
       "type": "object",
       "properties": {
-        "image": { "type": "string", "description": "URL to banner image." },
-        "link": { "type": "string", "description": "Optional link for the banner." },
-        "active": { "type": "boolean", "description": "Whether the banner is currently active." }
-      },
-      "required": ["image"]
-    },
-    "AnalyticsEvent": {
-      "title": "Analytics Event",
-      "description": "An event captured for analytics purposes.",
-      "type": "object",
-      "properties": {
-        "type": { "type": "string", "description": "Type of event (e.g., click, search)." },
-        "timestamp": { "type": "string", "format": "date-time", "description": "When the event occurred." },
-        "metadata": { "type": "object", "description": "Additional event data." }
-      },
-      "required": ["type", "timestamp"]
+        "whatsapp": { "type": "string" },
+        "instagram": { "type": "string" },
+        "facebook": { "type": "string" },
+        "email": { "type": "string" }
+      }
     },
     "User": {
       "title": "User Profile",
@@ -63,25 +55,9 @@
       "schema": "Roteiro",
       "description": "Collection of travel itineraries."
     },
-    "/quick_posts/{id}": {
-      "schema": "QuickPost",
-      "description": "Short social-media style posts."
-    },
-    "/sunset_locations/{id}": {
-      "schema": "SunsetLocation",
-      "description": "Best spots to watch the sunset."
-    },
-    "/moqueca_recipe/{id}": {
-      "schema": "MoquecaRecipe",
-      "description": "Traditional recipe data."
-    },
-    "/experiences/{id}": {
-      "schema": "Experience",
-      "description": "Local experiences and tours."
-    },
-    "/hero_data/{id}": {
-      "schema": "HeroData",
-      "description": "Homepage hero section content."
+    "/gallery/{id}": {
+      "schema": "GalleryImage",
+      "description": "Collection of gallery images."
     },
     "/settings/{id}": {
       "schema": "Settings",

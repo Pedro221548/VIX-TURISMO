@@ -65,12 +65,20 @@ interface ContactInfo {
   email: string;
 }
 
-export default function AdminPanel({ onExit, initialTab }: { onExit: () => void, initialTab?: 'roteiros' | 'settings', key?: string }) {
+interface GalleryImage {
+  id: string;
+  url: string;
+  caption?: string;
+  createdAt: string;
+}
+
+export default function AdminPanel({ onExit, initialTab }: { onExit: () => void, initialTab?: 'roteiros' | 'settings' | 'gallery', key?: string }) {
   const [user, setUser] = useState<User | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
   const [roteiros, setRoteiros] = useState<Roteiro[]>([]);
+  const [gallery, setGallery] = useState<GalleryImage[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingRoteiro, setEditingRoteiro] = useState<Partial<Roteiro> | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -122,6 +130,15 @@ export default function AdminPanel({ onExit, initialTab }: { onExit: () => void,
         }
       });
       unsubscribers.push(unsubSettings);
+
+      // Real-time Gallery
+      const unsubGallery = onSnapshot(query(collection(db, 'gallery'), orderBy('createdAt', 'desc')), (snapshot) => {
+        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as GalleryImage[];
+        setGallery(data);
+      }, (error) => {
+        console.error("Error listening to gallery:", error);
+      });
+      unsubscribers.push(unsubGallery);
     }
 
     return () => {
@@ -283,6 +300,57 @@ export default function AdminPanel({ onExit, initialTab }: { onExit: () => void,
       alert('Configurações salvas com sucesso!');
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, 'settings');
+    }
+  };
+
+  const handleUploadGalleryImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    setUploadProgress(0);
+
+    try {
+      const options = {
+        maxSizeMB: 1,
+        maxWidthOrHeight: 1920,
+        useWebWorker: true
+      };
+      const compressedFile = await imageCompression(file, options);
+      const storageRef = ref(storage, `gallery/${Date.now()}_${file.name}`);
+      const uploadTask = uploadBytesResumable(storageRef, compressedFile);
+
+      uploadTask.on('state_changed', 
+        (snapshot) => {
+          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+          setUploadProgress(progress);
+        },
+        (error) => {
+          console.error("Upload error:", error);
+          setUploading(false);
+        },
+        async () => {
+          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+          await addDoc(collection(db, 'gallery'), {
+            url: downloadURL,
+            createdAt: new Date().toISOString()
+          });
+          setUploading(false);
+          setUploadProgress(0);
+        }
+      );
+    } catch (error) {
+      console.error("Error uploading gallery image:", error);
+      setUploading(false);
+    }
+  };
+
+  const handleDeleteGalleryImage = async (id: string) => {
+    if (!window.confirm('Excluir esta imagem?')) return;
+    try {
+      await deleteDoc(doc(db, 'gallery', id));
+    } catch (error) {
+      console.error("Error deleting gallery image:", error);
     }
   };
 
@@ -523,6 +591,7 @@ export default function AdminPanel({ onExit, initialTab }: { onExit: () => void,
           <nav className="hidden lg:flex items-center gap-1 bg-stone-100 p-1 rounded-xl">
             {[
               { id: 'roteiros', label: 'Roteiros', icon: <MapPin className="w-4 h-4" /> },
+              { id: 'gallery', label: 'Galeria', icon: <ImageIcon className="w-4 h-4" /> },
               { id: 'settings', label: 'Contatos', icon: <Phone className="w-4 h-4" /> },
             ].map(tab => (
               <button
@@ -561,6 +630,7 @@ export default function AdminPanel({ onExit, initialTab }: { onExit: () => void,
       <div className="lg:hidden bg-white border-b border-stone-200 px-4 py-2 overflow-x-auto flex gap-2 no-scrollbar">
         {[
           { id: 'roteiros', label: 'Roteiros' },
+          { id: 'gallery', label: 'Galeria' },
           { id: 'settings', label: 'Contatos' },
         ].map(tab => (
           <button
@@ -637,6 +707,72 @@ export default function AdminPanel({ onExit, initialTab }: { onExit: () => void,
                   </div>
                 </div>
               ))}
+            </div>
+          </section>
+        )}
+
+        {activeTab === 'gallery' && (
+          <section>
+            <div className="flex items-center justify-between mb-8">
+              <h2 className="text-2xl font-bold text-stone-900 flex items-center gap-2">
+                <ImageIcon className="w-6 h-6 text-orange-600" /> Galeria de Fotos
+              </h2>
+              <label className="bg-orange-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-orange-700 transition-all shadow-lg shadow-orange-600/20 flex items-center gap-2 cursor-pointer">
+                <Plus className="w-5 h-5" /> 
+                Adicionar Foto
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  className="hidden" 
+                  onChange={handleUploadGalleryImage}
+                  disabled={uploading}
+                />
+              </label>
+            </div>
+
+            {uploading && (
+              <div className="mb-8 bg-white p-6 rounded-3xl border border-stone-200 shadow-sm">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-bold text-stone-600 flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" /> Enviando imagem...
+                  </span>
+                  <span className="text-sm font-bold text-orange-600">{Math.round(uploadProgress)}%</span>
+                </div>
+                <div className="w-full bg-stone-100 h-2 rounded-full overflow-hidden">
+                  <div 
+                    className="bg-orange-600 h-full transition-all duration-300" 
+                    style={{ width: `${uploadProgress}%` }}
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {gallery.map(item => (
+                <div key={item.id} className="aspect-square relative group rounded-2xl overflow-hidden border border-stone-200 bg-stone-100">
+                  <img 
+                    src={item.url} 
+                    alt="Gallery" 
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                    referrerPolicy="no-referrer"
+                  />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <button 
+                      onClick={() => handleDeleteGalleryImage(item.id)}
+                      className="bg-white text-red-600 p-3 rounded-full hover:bg-red-600 hover:text-white transition-all shadow-lg"
+                      title="Excluir imagem"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {gallery.length === 0 && !uploading && (
+                <div className="col-span-full py-20 text-center bg-white rounded-3xl border border-dashed border-stone-300">
+                  <ImageIcon className="w-12 h-12 text-stone-300 mx-auto mb-4" />
+                  <p className="text-stone-500 font-medium">Nenhuma foto na galeria ainda.</p>
+                </div>
+              )}
             </div>
           </section>
         )}

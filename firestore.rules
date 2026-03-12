@@ -21,27 +21,7 @@ service cloud.firestore {
       allow write: if isSuperAdmin();
     }
 
-    match /quick_posts/{document=**} {
-      allow read: if true;
-      allow write: if isSuperAdmin();
-    }
-
-    match /sunset_locations/{document=**} {
-      allow read: if true;
-      allow write: if isSuperAdmin();
-    }
-
-    match /moqueca_recipe/{document=**} {
-      allow read: if true;
-      allow write: if isSuperAdmin();
-    }
-
-    match /experiences/{document=**} {
-      allow read: if true;
-      allow write: if isSuperAdmin();
-    }
-
-    match /hero_data/{document=**} {
+    match /gallery/{document=**} {
       allow read: if true;
       allow write: if isSuperAdmin();
     }

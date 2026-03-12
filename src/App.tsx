@@ -486,8 +486,9 @@ export default function App() {
   const [selectedRoteiro, setSelectedRoteiro] = useState<any>(null);
   const [showAdmin, setShowAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [adminTab, setAdminTab] = useState<'roteiros' | 'settings'>('roteiros');
+  const [adminTab, setAdminTab] = useState<'roteiros' | 'settings' | 'gallery'>('roteiros');
   const [roteiros, setRoteiros] = useState<any[]>([]);
+  const [gallery, setGallery] = useState<any[]>([]);
   const [contactInfo, setContactInfo] = useState<any>({
     phone: '5527998597568',
     whatsapp: '5527998597568',
@@ -564,9 +565,16 @@ export default function App() {
       setLoading(false);
     });
 
+    const unsubGallery = onSnapshot(query(collection(db, 'gallery'), orderBy('createdAt', 'desc')), (snapshot) => {
+      setGallery(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, 'gallery');
+    });
+
     return () => {
       unsubRoteiros();
       unsubSettings();
+      unsubGallery();
     };
   }, [isAuth]);
 
@@ -629,7 +637,7 @@ export default function App() {
 
           {/* Desktop Nav */}
           <div className="hidden md:flex items-center gap-8">
-            {['Roteiros'].map((item) => (
+            {['Roteiros', 'Galeria'].map((item) => (
               <a 
                 key={item} 
                 href={`#${item.toLowerCase()}`} 
@@ -673,7 +681,7 @@ export default function App() {
             className="fixed inset-0 z-40 bg-white pt-24 px-6 md:hidden"
           >
             <div className="flex flex-col gap-6">
-              {['Roteiros'].map((item) => (
+              {['Roteiros', 'Galeria'].map((item) => (
                 <a 
                   key={item} 
                   href={`#${item.toLowerCase()}`} 
@@ -711,7 +719,73 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      <div className="pt-24">
+      {/* Hero Section */}
+      <section className="relative h-screen min-h-[700px] flex items-center justify-center overflow-hidden">
+        {/* Background Image with Parallax Effect */}
+        <motion.div 
+          initial={{ scale: 1.1 }}
+          animate={{ scale: 1 }}
+          transition={{ duration: 1.5, ease: "easeOut" }}
+          className="absolute inset-0 z-0"
+        >
+          <img 
+            src="https://upload.wikimedia.org/wikipedia/commons/0/03/Convento_da_Penha_e_Terceira_Ponte_com_Mar_e_Vit%C3%B3ria_ao_fundo.jpg" 
+            alt="Vitória ES" 
+            className="w-full h-full object-cover"
+            referrerPolicy="no-referrer"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-[#fafaf9]" />
+        </motion.div>
+
+        <div className="relative z-10 max-w-7xl mx-auto px-6 text-center">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5, duration: 0.8 }}
+          >
+            <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-orange-600/20 border border-orange-600/30 text-orange-400 text-xs font-bold uppercase tracking-[0.3em] mb-8 backdrop-blur-md">
+              <Sparkles className="w-4 h-4" /> Descubra o Espírito Santo
+            </span>
+            <h1 className="text-6xl md:text-8xl font-black text-white tracking-tighter leading-[0.9] mb-8">
+              EXPLORE O <br />
+              <span className="text-orange-600">MELHOR DO ESPÍRITO SANTO</span>
+            </h1>
+            <p className="text-xl md:text-2xl text-white/80 max-w-2xl mx-auto mb-12 font-medium leading-relaxed">
+              Roteiros exclusivos pelos melhores destinos do Espírito Santo com guias credenciados e conforto premium.
+            </p>
+            <div className="flex flex-col md:flex-row items-center justify-center gap-6">
+              <a 
+                href="#roteiros"
+                className="bg-orange-600 text-white px-10 py-5 rounded-2xl font-bold text-lg hover:bg-orange-700 transition-all shadow-2xl shadow-orange-600/30 flex items-center gap-3 group"
+              >
+                Ver Roteiros
+                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              </a>
+              <a 
+                href={`https://wa.me/${contactInfo.whatsapp}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="bg-white/10 backdrop-blur-md border border-white/20 text-white px-10 py-5 rounded-2xl font-bold text-lg hover:bg-white/20 transition-all flex items-center gap-3"
+              >
+                Falar com Especialista
+              </a>
+            </div>
+          </motion.div>
+        </div>
+
+        {/* Scroll Indicator */}
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1.5, duration: 1 }}
+          className="absolute bottom-12 left-1/2 -translate-x-1/2 flex flex-col items-center gap-4"
+        >
+          <span className="text-white/40 text-[10px] font-bold uppercase tracking-[0.4em]">Scroll</span>
+          <div className="w-px h-12 bg-gradient-to-b from-orange-600 to-transparent" />
+        </motion.div>
+      </section>
+
+      <div className="pt-0">
         {/* Guide Safety Banner */}
       <section className="bg-orange-600 py-6 px-6">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-center gap-4 text-white text-center md:text-left">
@@ -865,6 +939,50 @@ export default function App() {
 
     </div>
 
+      {/* Gallery Section */}
+      <section id="galeria" className="py-24 px-6 bg-white">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <span className="text-orange-600 font-bold text-xs uppercase tracking-[0.3em] mb-4 block">
+              Nossos Registros
+            </span>
+            <h2 className="text-4xl md:text-5xl font-bold text-stone-900 tracking-tight">
+              Galeria de Momentos
+            </h2>
+            <p className="text-stone-500 mt-4 max-w-2xl mx-auto">
+              Confira alguns dos momentos inesquecíveis registrados em nossos roteiros pelo Espírito Santo.
+            </p>
+          </div>
+
+          <div className="columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
+            {gallery.map((item, index) => (
+              <motion.div
+                key={item.id}
+                initial={{ opacity: 0, scale: 0.9 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ delay: index * 0.05 }}
+                className="break-inside-avoid rounded-3xl overflow-hidden border border-stone-100 shadow-sm hover:shadow-xl transition-all duration-500 group"
+              >
+                <img 
+                  src={item.url} 
+                  alt="Gallery" 
+                  className="w-full h-auto object-cover transition-transform duration-700 group-hover:scale-110"
+                  referrerPolicy="no-referrer"
+                />
+              </motion.div>
+            ))}
+          </div>
+
+          {gallery.length === 0 && (
+            <div className="text-center py-20 bg-stone-50 rounded-[3rem] border border-dashed border-stone-200">
+              <ImageIcon className="w-12 h-12 text-stone-300 mx-auto mb-4" />
+              <p className="text-stone-400 font-medium">Em breve, novas fotos aqui!</p>
+            </div>
+          )}
+        </div>
+      </section>
+
       {/* Footer */}
       <footer className="bg-stone-50 border-t border-stone-200 pt-24 pb-12 px-6">
         <div className="max-w-7xl mx-auto">
@@ -899,7 +1017,7 @@ export default function App() {
             <div>
               <h4 className="font-bold text-stone-900 mb-8 uppercase text-xs tracking-widest">Navegação</h4>
               <ul className="flex flex-col gap-4">
-                {['Roteiros'].map(item => (
+                {['Roteiros', 'Galeria'].map(item => (
                   <li key={item}>
                     <a href={`#${item.toLowerCase()}`} className="text-sm text-stone-500 hover:text-orange-600 transition-colors">{item}</a>
                   </li>
