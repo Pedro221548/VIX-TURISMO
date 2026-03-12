@@ -5,9 +5,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { db, auth, handleFirestoreError, OperationType } from './firebase';
-import { collection, getDocs, addDoc, query, orderBy, updateDoc, doc, onSnapshot } from 'firebase/firestore';
-import { signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import AdminPanel from './components/AdminPanel';
 import { 
   Utensils, 
@@ -245,8 +242,8 @@ function RoteiroModal({ roteiro, onClose, contactInfo, onDownload }: { roteiro: 
               <MapPin className="w-5 h-5 text-orange-600" /> Pontos Visitados
             </h4>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {roteiro.places.map((place: string) => (
-                <div key={place} className="flex items-center gap-2 p-3 bg-stone-50 rounded-xl border border-stone-100">
+              {roteiro.places.map((place: string, idx: number) => (
+                <div key={`${place}-${idx}`} className="flex items-center gap-2 p-3 bg-stone-50 rounded-xl border border-stone-100">
                   <Camera className="w-3 h-3 text-stone-400" />
                   <span className="text-xs text-stone-600 font-medium">{place}</span>
                 </div>
@@ -260,8 +257,8 @@ function RoteiroModal({ roteiro, onClose, contactInfo, onDownload }: { roteiro: 
                 <Sparkles className="w-5 h-5 text-orange-600" /> Cortesias Incluídas
               </h4>
               <div className="flex flex-wrap gap-3">
-                {roteiro.courtesy.map((item: string) => (
-                  <div key={item} className="flex items-center gap-2 px-4 py-2 bg-orange-50 rounded-xl border border-orange-100">
+                {roteiro.courtesy.map((item: string, idx: number) => (
+                  <div key={`${item}-${idx}`} className="flex items-center gap-2 px-4 py-2 bg-orange-50 rounded-xl border border-orange-100">
                     <div className="w-1.5 h-1.5 rounded-full bg-orange-600" />
                     <span className="text-sm text-stone-700 font-bold">{item}</span>
                   </div>
@@ -485,8 +482,8 @@ export default function App() {
   const [scrolled, setScrolled] = useState(false);
   const [selectedRoteiro, setSelectedRoteiro] = useState<any>(null);
   const [showAdmin, setShowAdmin] = useState(false);
+  const [adminTab, setAdminTab] = useState<'roteiros' | 'gallery'>('roteiros');
   const [loading, setLoading] = useState(true);
-  const [adminTab, setAdminTab] = useState<'roteiros' | 'settings' | 'gallery'>('roteiros');
   const [roteiros, setRoteiros] = useState<any[]>([]);
   const [gallery, setGallery] = useState<any[]>([]);
   const [contactInfo, setContactInfo] = useState<any>({
@@ -518,65 +515,41 @@ export default function App() {
   const [isAuth, setIsAuth] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        setIsAuth(true);
-      } else {
-        signInAnonymously(auth).catch(err => console.error("Anonymous sign-in error:", err));
-      }
-    });
-
     const handleScroll = () => {
       setScrolled(window.scrollY > 50);
     };
     window.addEventListener('scroll', handleScroll);
     return () => {
-      unsubscribe();
       window.removeEventListener('scroll', handleScroll);
     };
   }, []);
 
   useEffect(() => {
-    if (!isAuth) return;
-
-    const unsubRoteiros = onSnapshot(collection(db, 'roteiros'), (snapshot) => {
-      let data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
-      data.sort((a, b) => {
-        const getNum = (s: string) => {
-          const match = (s || '').match(/\d+/);
-          return match ? parseInt(match[0]) : 0;
-        };
-        return getNum(a.subtitle) - getNum(b.subtitle);
-      });
-      setRoteiros(data);
-      if (data.length === 0) setRoteiros(INITIAL_ROTEIROS);
-    }, (error) => {
-      handleFirestoreError(error, OperationType.GET, 'roteiros');
-      if (roteiros.length === 0) setRoteiros(INITIAL_ROTEIROS);
-    });
-
-    const unsubSettings = onSnapshot(collection(db, 'settings'), (snapshot) => {
-      if (!snapshot.empty) {
-        setContactInfo(snapshot.docs[0].data());
+    const fetchData = async () => {
+      try {
+        const [rotRes, galRes] = await Promise.all([
+          fetch('/api/roteiros'),
+          fetch('/api/gallery')
+        ]);
+        if (rotRes.ok) {
+          const rotData = await rotRes.json();
+          setRoteiros(rotData);
+        } else {
+          setRoteiros(INITIAL_ROTEIROS);
+        }
+        if (galRes.ok) {
+          const galData = await galRes.json();
+          setGallery(galData);
+        }
+      } catch (error) {
+        console.error("Erro ao carregar dados", error);
+        setRoteiros(INITIAL_ROTEIROS);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
-    }, (error) => {
-      handleFirestoreError(error, OperationType.GET, 'settings');
-      setLoading(false);
-    });
-
-    const unsubGallery = onSnapshot(query(collection(db, 'gallery'), orderBy('createdAt', 'desc')), (snapshot) => {
-      setGallery(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    }, (error) => {
-      handleFirestoreError(error, OperationType.GET, 'gallery');
-    });
-
-    return () => {
-      unsubRoteiros();
-      unsubSettings();
-      unsubGallery();
     };
-  }, [isAuth]);
+    fetchData();
+  }, []);
 
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [bookingRoteiro, setBookingRoteiro] = useState<any>(null);
@@ -706,7 +679,12 @@ export default function App() {
 
       <AnimatePresence>
         {showAdmin && (
-          <AdminPanel key="admin-panel" onExit={() => setShowAdmin(false)} initialTab={adminTab} />
+          <AdminPanel onClose={() => {
+            setShowAdmin(false);
+            // Recarregar dados ao fechar o admin
+            fetch('/api/roteiros').then(r => r.json()).then(setRoteiros).catch(() => {});
+            fetch('/api/gallery').then(r => r.json()).then(setGallery).catch(() => {});
+          }} initialTab={adminTab} />
         )}
         {selectedRoteiro && (
           <RoteiroModal 
@@ -729,7 +707,7 @@ export default function App() {
           className="absolute inset-0 z-0"
         >
           <img 
-            src="https://upload.wikimedia.org/wikipedia/commons/0/03/Convento_da_Penha_e_Terceira_Ponte_com_Mar_e_Vit%C3%B3ria_ao_fundo.jpg" 
+            src={contactInfo.heroImage || "https://upload.wikimedia.org/wikipedia/commons/0/03/Convento_da_Penha_e_Terceira_Ponte_com_Mar_e_Vit%C3%B3ria_ao_fundo.jpg"} 
             alt="Vitória ES" 
             className="w-full h-full object-cover"
             referrerPolicy="no-referrer"
@@ -744,14 +722,14 @@ export default function App() {
             transition={{ delay: 0.5, duration: 0.8 }}
           >
             <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-orange-600/20 border border-orange-600/30 text-orange-400 text-xs font-bold uppercase tracking-[0.3em] mb-8 backdrop-blur-md">
-              <Sparkles className="w-4 h-4" /> Descubra o Espírito Santo
+              <Sparkles className="w-4 h-4" /> {contactInfo.heroTitle || "Descubra o Espírito Santo"}
             </span>
-            <h1 className="text-6xl md:text-8xl font-black text-white tracking-tighter leading-[0.9] mb-8">
-              EXPLORE O <br />
-              <span className="text-orange-600">MELHOR DO ESPÍRITO SANTO</span>
+            <h1 className="text-6xl md:text-8xl font-black text-white tracking-tighter leading-[0.9] mb-8 uppercase">
+              {contactInfo.heroTitle ? contactInfo.heroTitle.split(' ').slice(0, -2).join(' ') : "EXPLORE O"} <br />
+              <span className="text-orange-600">{contactInfo.heroTitle ? contactInfo.heroTitle.split(' ').slice(-2).join(' ') : "MELHOR DO ESPÍRITO SANTO"}</span>
             </h1>
             <p className="text-xl md:text-2xl text-white/80 max-w-2xl mx-auto mb-12 font-medium leading-relaxed">
-              Roteiros exclusivos pelos melhores destinos do Espírito Santo com guias credenciados e conforto premium.
+              {contactInfo.heroSubtitle || "Roteiros exclusivos pelos melhores destinos do Espírito Santo com guias credenciados e conforto premium."}
             </p>
             <div className="flex flex-col md:flex-row items-center justify-center gap-6">
               <a 
@@ -812,19 +790,6 @@ export default function App() {
             <p className="text-stone-500 mt-4 max-w-2xl mx-auto">
               Escolha um de nossos roteiros cuidadosamente planejados para você aproveitar o melhor do Espírito Santo com conforto e segurança.
             </p>
-
-            <div className="mt-8 flex justify-center">
-              <button 
-                onClick={() => {
-                  setAdminTab('roteiros');
-                  setShowAdmin(true);
-                }}
-                className="bg-stone-900 text-white px-8 py-3 rounded-full text-xs font-bold uppercase tracking-widest hover:bg-orange-600 transition-all shadow-xl shadow-black/10 flex items-center gap-2"
-              >
-                <Plus className="w-4 h-4" />
-                Novo Roteiro
-              </button>
-            </div>
           </div>
 
           <AnimatePresence mode="wait">
@@ -837,7 +802,7 @@ export default function App() {
             >
               {roteiros.map((roteiro, index) => (
                 <motion.div 
-                  key={roteiro.id}
+                  key={roteiro.id || `roteiro-${index}`}
                   initial={{ opacity: 0, scale: 0.95 }}
                   whileInView={{ opacity: 1, scale: 1 }}
                   viewport={{ once: true }}
@@ -872,8 +837,8 @@ export default function App() {
                       <div className="mb-8">
                         <h4 className="text-[10px] md:text-[11px] font-black text-stone-400 uppercase tracking-widest mb-4">O QUE VOCÊ VAI VISITAR:</h4>
                         <div className="flex flex-wrap gap-2">
-                          {roteiro.places.slice(0, 4).map(place => (
-                            <span key={place} className="bg-[#f5f5f5] text-stone-600 px-3 py-2 md:px-4 md:py-2 rounded-xl text-[10px] md:text-[11px] font-bold">
+                          {roteiro.places.slice(0, 4).map((place, idx) => (
+                            <span key={`${place}-${idx}`} className="bg-[#f5f5f5] text-stone-600 px-3 py-2 md:px-4 md:py-2 rounded-xl text-[10px] md:text-[11px] font-bold">
                               {place}
                             </span>
                           ))}
@@ -957,7 +922,7 @@ export default function App() {
           <div className="columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
             {gallery.map((item, index) => (
               <motion.div
-                key={item.id}
+                key={item.id || `gallery-${index}`}
                 initial={{ opacity: 0, scale: 0.9 }}
                 whileInView={{ opacity: 1, scale: 1 }}
                 viewport={{ once: true }}
