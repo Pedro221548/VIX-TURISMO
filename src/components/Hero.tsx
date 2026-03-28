@@ -17,10 +17,11 @@ const Hero: React.FC<HeroProps> = ({ contactInfo }) => {
         className="absolute inset-0 z-0"
       >
         <img 
-          src={contactInfo.heroImage || "https://upload.wikimedia.org/wikipedia/commons/0/03/Convento_da_Penha_e_Terceira_Ponte_com_Mar_e_Vit%C3%B3ria_ao_fundo.jpg"} 
+          src={contactInfo.heroImage || "https://images.unsplash.com/photo-1596422846543-75c6fc197f07?auto=format&fit=crop&q=70&w=1200"} 
           alt="Vitória ES" 
           className="w-full h-full object-cover"
           referrerPolicy="no-referrer"
+          loading="eager"
         />
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-[#fafaf9]" />
       </motion.div>

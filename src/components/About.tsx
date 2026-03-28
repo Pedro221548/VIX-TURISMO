@@ -61,7 +61,7 @@ const About: React.FC = () => {
                   whileHover={{ y: -10 }}
                   className="rounded-[2.5rem] overflow-hidden aspect-[3/4] shadow-2xl"
                 >
-                  <img src="https://images.unsplash.com/photo-1596422846543-75c6fc197f07?auto=format&fit=crop&q=80" alt="ES" className="w-full h-full object-cover" referrerPolicy="no-referrer" loading="lazy" />
+                  <img src="https://images.unsplash.com/photo-1596422846543-75c6fc197f07?auto=format&fit=crop&q=60&w=800" alt="ES" className="w-full h-full object-cover" referrerPolicy="no-referrer" loading="lazy" />
                 </motion.div>
                 <div className="bg-orange-600 rounded-[2.5rem] p-8 text-white aspect-square flex flex-col justify-end">
                   <span className="text-4xl font-black mb-2">10+</span>
@@ -77,7 +77,7 @@ const About: React.FC = () => {
                   whileHover={{ y: -10 }}
                   className="rounded-[2.5rem] overflow-hidden aspect-[3/4] shadow-2xl"
                 >
-                  <img src="https://images.unsplash.com/photo-1516815231560-8f41ec531527?auto=format&fit=crop&q=80" alt="ES" className="w-full h-full object-cover" referrerPolicy="no-referrer" loading="lazy" />
+                  <img src="https://images.unsplash.com/photo-1516815231560-8f41ec531527?auto=format&fit=crop&q=60&w=800" alt="ES" className="w-full h-full object-cover" referrerPolicy="no-referrer" loading="lazy" />
                 </motion.div>
               </div>
             </div>

@@ -116,13 +116,13 @@ export const INITIAL_FROTA = [
   {
     title: "Vans Executivas",
     description: "Ideais para grupos e famílias, oferecendo amplo espaço, poltronas reclináveis e ambiente climatizado.",
-    image: "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&q=80",
+    image: "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&q=60&w=800",
     features: ['Ar-condicionado', 'Bancos reclináveis', 'Wi-Fi a bordo', 'Seguro passageiro']
   },
   {
     title: "Carros Executivos",
     description: "Perfeitos para casais ou viagens de negócios, garantindo privacidade, agilidade e muito conforto.",
-    image: "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&q=80",
+    image: "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&q=60&w=800",
     features: ['Ar-condicionado', 'Bancos em couro', 'Água cortesia', 'Seguro passageiro']
   }
 ];

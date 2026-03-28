@@ -23,7 +23,7 @@ const RoteiroImage: React.FC<{ roteiro: any }> = ({ roteiro }) => {
   }, [images.length]);
 
   return (
-    <div className="md:w-2/5 relative overflow-hidden h-64 md:h-auto">
+    <div className="relative overflow-hidden h-64 md:h-72 w-full">
       <AnimatePresence mode="wait">
         <motion.div
           key={currentImage}
@@ -82,7 +82,7 @@ const Roteiros: React.FC<RoteirosProps> = ({ roteiros, setSelectedRoteiro, setBo
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="grid grid-cols-1 lg:grid-cols-2 gap-12"
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
           >
             {roteiros.map((roteiro, index) => (
               <motion.div 
@@ -92,10 +92,10 @@ const Roteiros: React.FC<RoteirosProps> = ({ roteiros, setSelectedRoteiro, setBo
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.1 }}
                 onClick={() => setSelectedRoteiro(roteiro)}
-                className="bg-white rounded-[3rem] overflow-hidden shadow-2xl shadow-black/5 border border-stone-100 flex flex-col md:flex-row group cursor-pointer hover:border-orange-200 transition-all duration-500 hover:-translate-y-2"
+                className="bg-white rounded-[3rem] overflow-hidden shadow-2xl shadow-black/5 border border-stone-100 flex flex-col group cursor-pointer hover:border-orange-200 transition-all duration-500 hover:-translate-y-2"
               >
                 <RoteiroImage roteiro={roteiro} />
-                <div className="md:w-3/5 p-8 md:p-12 flex flex-col justify-between relative bg-white">
+                <div className="w-full p-8 md:p-10 flex flex-col justify-between relative bg-white">
                   <div className="absolute top-6 right-6 md:top-8 md:right-10 z-20">
                     <span className="flex items-center gap-2 text-[9px] md:text-[10px] font-black text-orange-600 uppercase tracking-[0.2em] bg-orange-50 px-4 py-2 rounded-full border border-orange-100 shadow-sm">
                       <ShieldCheck className="w-3.5 h-3.5" /> Premium

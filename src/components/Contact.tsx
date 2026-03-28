@@ -11,7 +11,7 @@ const Contact: React.FC<ContactProps> = ({ contactInfo }) => {
     <section className="py-40 px-6 bg-stone-900 relative overflow-hidden">
       <div className="absolute inset-0 opacity-30">
         <img 
-          src="https://images.unsplash.com/photo-1596422846543-75c6fc197f07?auto=format&fit=crop&q=80" 
+          src="https://images.unsplash.com/photo-1596422846543-75c6fc197f07?auto=format&fit=crop&q=60&w=800" 
           alt="Background" 
           className="w-full h-full object-cover"
           referrerPolicy="no-referrer"
